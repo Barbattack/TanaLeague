@@ -1,0 +1,65 @@
+# TanaLeague - File da NON caricare su GitHub
+# =============================================
+
+# ==================
+# SECRETS & CREDENTIALS (IMPORTANTE!)
+# ==================
+# File con credenziali Google
+secrets/
+service_account*.json
+*credentials*.json
+
+# File di configurazione con password
+config.py
+
+# Variabili d'ambiente
+.env
+.env.local
+
+# ==================
+# CACHE & DATI TEMPORANEI
+# ==================
+# Cache dell'applicazione
+cache_data.json
+stats_cache/
+*.cache
+
+# ==================
+# PYTHON
+# ==================
+# File compilati Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# ==================
+# IDE & EDITOR
+# ==================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ==================
+# LOG & DEBUG
+# ==================
+*.log
+logs/
+
+# ==================
+# BACKUP
+# ==================
+*.bak
+*.backup
+*.tar.gz
+*.zip
