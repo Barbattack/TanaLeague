@@ -213,13 +213,13 @@ def import_to_sheet(data, test_mode=False):
         ws_results = sheet.worksheet("Results")
 
         existing_players = ws_players.get_all_values()
-        existing_dict = {row[0]: i for i, row in enumerate(existing_players[3:], start=4) if row}
+        existing_dict = {row[0]: i for i, row in enumerate(existing_players[1:], start=2) if row}
 
         # Calcola statistiche lifetime da TUTTO il foglio Results
         all_results = ws_results.get_all_values()
         lifetime_stats = {}
 
-        for row in all_results[3:]:
+        for row in all_results[1:]:
             if not row or len(row) < 10:
                 continue
             membership = row[2]
