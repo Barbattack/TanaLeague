@@ -30,11 +30,16 @@ Se non esiste, aggiungila manualmente.
 
 ## 🎯 STEP 2: Prepara CSV di Test
 
-Usa il CSV di esempio già presente: `templates/OP11_2025_07_03.csv`
+**Metti un CSV One Piece nella cartella `tanaleague2/`** (NON in sottocartelle!)
 
-**Questo CSV contiene:**
-- Ranking, Membership, User Name, Win Points, OMW%, Record
+**Il CSV One Piece deve contenere:**
+- Ranking, Membership Number, User Name, Win Points, OMW%, Record
 - **NON** contiene W/T/L espliciti - lo script li CALCOLA automaticamente!
+
+**Esempio:** Se il tuo CSV si chiama `OP11_2025_07_03.csv`, copialo in:
+```
+/home/user/TanaLeague/tanaleague2/OP11_2025_07_03.csv
+```
 
 ---
 
@@ -44,7 +49,12 @@ Usa il CSV di esempio già presente: `templates/OP11_2025_07_03.csv`
 
 ```bash
 cd tanaleague2
-python import_tournament_TEST.py --csv templates/OP11_2025_07_03.csv --season OP-TEST01
+python import_tournament_TEST.py --csv NOME_TUO_FILE.csv --season OP-TEST01
+```
+
+**Esempio:**
+```bash
+python import_tournament_TEST.py --csv OP11_2025_07_03.csv --season OP-TEST01
 ```
 
 **Cosa succede:**
