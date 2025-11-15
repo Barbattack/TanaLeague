@@ -10,21 +10,22 @@
 
 ---
 
-## 🎯 STEP 1: Verifica Stagione di Test
+## 🎯 STEP 1: Prepara Fogli TEST
 
-Nel **Google Sheet di TEST**, verifica che esista una stagione One Piece nel foglio **Config**:
-
+**A) Foglio Config** - Aggiungi stagione One Piece:
 ```
 Season_ID: OP-TEST01
 TCG: OP
 Season_Name: One Piece Test Season
-Start_Date: 2025-01-01
-Status: ACTIVE
 Entry_Fee: 5
 Pack_Cost: 4
 ```
 
-Se non esiste, aggiungila manualmente.
+**B) Foglio Players** - Aggiungi colonna TCG (colonna C, dopo Name):
+```
+Membership | Name | TCG | First_Seen | Last_Seen | Tournaments | Wins | Match_W | Match_T | Match_L | Points
+```
+⚠️ **IMPORTANTE:** La colonna TCG serve per distinguere stats One Piece vs Pokemon!
 
 ---
 

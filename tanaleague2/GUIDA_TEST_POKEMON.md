@@ -10,10 +10,9 @@
 
 ---
 
-## 🎯 STEP 1: Prepara la Stagione di Test
+## 🎯 STEP 1: Prepara Fogli TEST
 
-Nel **Google Sheet di TEST**, vai sul foglio **Config** e aggiungi una riga:
-
+**A) Foglio Config** - Aggiungi stagione Pokemon:
 ```
 Season_ID: PKM-TEST01
 TCG: PKM
@@ -22,7 +21,11 @@ Start_Date: 2025-11-01
 Status: ACTIVE
 ```
 
-Salva il foglio.
+**B) Foglio Players** - Aggiungi colonna TCG (colonna C, dopo Name):
+```
+Membership | Name | TCG | First_Seen | Last_Seen | Tournaments | Wins | Match_W | Match_T | Match_L | Points
+```
+⚠️ **IMPORTANTE:** La colonna TCG serve per distinguere stats Pokemon vs One Piece!
 
 ---
 
