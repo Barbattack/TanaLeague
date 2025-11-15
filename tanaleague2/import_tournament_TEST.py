@@ -360,8 +360,17 @@ def get_season_config(sheet, season_id: str) -> Dict:
     # Leggiamo manualmente per evitare problemi con colonne vuote
     all_values = ws.get_all_values()
 
-    # Riga 4 contiene gli header (indice 3)
-    headers = all_values[3]
+    # Auto-detect header row: produzione usa riga 4, TEST usa riga 1
+    if len(all_values) >= 4 and all_values[3] and 'Season_ID' in all_values[3]:
+        # Produzione: header a riga 4 (indice 3)
+        header_idx = 3
+        data_start_idx = 4
+    else:
+        # TEST: header a riga 1 (indice 0)
+        header_idx = 0
+        data_start_idx = 1
+
+    headers = all_values[header_idx]
 
     # Puliamo gli header rimuovendo stringhe vuote
     clean_headers = []
@@ -373,7 +382,7 @@ def get_season_config(sheet, season_id: str) -> Dict:
 
     # Convertiamo in lista di dict
     data = []
-    for row in all_values[4:]:  # Dalla riga 5 in poi
+    for row in all_values[data_start_idx:]:  # Dalla riga dopo header
         if not any(row[:len(clean_headers)]):  # Skip righe completamente vuote
             continue
         row_dict = {}
