@@ -25,11 +25,11 @@
 
 <!-- Quick Stats -->
 <div class="row mb-4">
-    <div class="col-lg-3 col-md-4 col-6 mb-3">
+    <div class="col-lg-4 col-md-6 mb-3">
         <div class="card text-center h-100 border-primary" style="border-width: 2px;">
             <div class="card-body">
-                <h6 class="text-muted mb-2">⚔️ Record</h6>
-                <h3 class="mb-0" style="font-size: 1.5rem;">
+                <h6 class="text-muted mb-2">⚔️ Record Partite</h6>
+                <h3 class="mb-0">
                     <span class="text-success">{{ player.total_w }}W</span> -
                     <span class="text-warning">{{ player.total_t }}T</span> -
                     <span class="text-danger">{{ player.total_l }}L</span>
@@ -38,7 +38,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-2 col-md-4 col-6 mb-3">
+    <div class="col-lg-2 col-md-3 col-6 mb-3">
         <div class="card text-center h-100">
             <div class="card-body">
                 <h6 class="text-muted mb-1">🏆 Tornei</h6>
@@ -46,7 +46,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-2 col-md-4 col-6 mb-3">
+    <div class="col-lg-2 col-md-3 col-6 mb-3">
         <div class="card text-center h-100 bg-warning bg-opacity-10">
             <div class="card-body">
                 <h6 class="text-muted mb-1">⭐ Vinti</h6>
@@ -54,7 +54,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-2 col-md-4 col-6 mb-3">
+    <div class="col-lg-2 col-md-3 col-6 mb-3">
         <div class="card text-center h-100">
             <div class="card-body">
                 <h6 class="text-muted mb-1">🥉 Top3</h6>
@@ -62,7 +62,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-2 col-md-4 col-6 mb-3">
+    <div class="col-lg-2 col-md-3 col-6 mb-3">
         <div class="card text-center h-100">
             <div class="card-body">
                 <h6 class="text-muted mb-1">🔥 Best</h6>
@@ -70,13 +70,49 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-1 col-md-4 col-6 mb-3">
-        <div class="card text-center h-100 {% if player.trend > 0 %}border-success{% elif player.trend < 0 %}border-danger{% endif %}">
-            <div class="card-body p-2">
-                <h6 class="text-muted mb-1" style="font-size: 0.8rem;">📈</h6>
-                <h4 class="mb-0 {% if player.trend > 0 %}text-success{% elif player.trend < 0 %}text-danger{% endif %}">
-                    {% if player.trend > 0 %}+{% endif %}{{ player.trend }}%
-                </h4>
+</div>
+
+<!-- Performance Metrics (Progress Bars) -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-chart-line"></i> Performance</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span>Win Rate</span>
+                    <span class="badge bg-primary">{{ player.match_win_rate }}%</span>
+                </div>
+                <div class="progress" style="height: 25px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ player.match_win_rate }}%;">{{ player.match_win_rate }}%</div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span>Top8 Rate</span>
+                    <span class="badge bg-primary">{{ player.top8_rate }}%</span>
+                </div>
+                <div class="progress" style="height: 25px;">
+                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ player.top8_rate }}%;">{{ player.top8_rate }}%</div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span>Trend</span>
+                    <span class="badge {% if player.trend > 0 %}bg-success{% elif player.trend < 0 %}bg-danger{% else %}bg-secondary{% endif %}">
+                        {% if player.trend > 0 %}↗️ +{{ player.trend }}%{% elif player.trend < 0 %}↘️ {{ player.trend }}%{% else %}→ {{ player.trend }}%{% endif %}
+                    </span>
+                </div>
+                <div class="alert {% if player.trend > 0 %}alert-success{% elif player.trend < 0 %}alert-danger{% else %}alert-secondary{% endif %} mb-0 py-2 text-center">
+                    {% if player.trend > 0 %}
+                        In crescita! 🚀
+                    {% elif player.trend < 0 %}
+                        In calo, forza! 💪
+                    {% else %}
+                        Stabile 📊
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -115,7 +151,8 @@
         <h5 class="mb-0"><i class="fas fa-chart-area"></i> Evoluzione Punti</h5>
     </div>
     <div class="card-body">
-        <canvas id="pointsChart" height="80"></canvas>
+        <canvas id="pointsChart" class="d-none d-md-block" height="80"></canvas>
+        <canvas id="pointsChartMobile" class="d-md-none" height="200"></canvas>
     </div>
 </div>
 
@@ -233,30 +270,53 @@ new Chart(donutCtx, {
     }
 });
 
-// Line Chart - Evoluzione Punti
+// Line Chart - Evoluzione Punti (Desktop)
 const lineCtx = document.getElementById('pointsChart');
-new Chart(lineCtx, {
-    type: 'line',
-    data: {
-        labels: {{ player.chart_labels|tojson }},
-        datasets: [{
-            label: 'Punti',
-            data: {{ player.chart_data|tojson }},
-            borderColor: 'rgb(75, 192, 192)',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            tension: 0.3,
-            fill: true
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            legend: { display: false }
+if (lineCtx) {
+    new Chart(lineCtx, {
+        type: 'line',
+        data: {
+            labels: {{ player.chart_labels|tojson }},
+            datasets: [{
+                label: 'Punti',
+                data: {{ player.chart_data|tojson }},
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.3,
+                fill: true
+            }]
         },
-        scales: {
-            y: { beginAtZero: false }
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: false } }
         }
-    }
-});
+    });
+}
+
+// Line Chart - Evoluzione Punti (Mobile)
+const lineMobileCtx = document.getElementById('pointsChartMobile');
+if (lineMobileCtx) {
+    new Chart(lineMobileCtx, {
+        type: 'line',
+        data: {
+            labels: {{ player.chart_labels|tojson }},
+            datasets: [{
+                label: 'Punti',
+                data: {{ player.chart_data|tojson }},
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: false } }
+        }
+    });
+}
 </script>
 {% endblock %}
