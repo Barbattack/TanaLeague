@@ -457,15 +457,31 @@ def player(membership):
         tournaments_played = len(player_results)
         tournament_wins = sum(1 for r in player_results if r[3] and int(r[3]) == 1)
         top8_count = sum(1 for r in player_results if r[3] and int(r[3]) <= 8)
-        
+        top3_count = sum(1 for r in player_results if r[3] and int(r[3]) <= 3)
+
         points = [float(r[8]) for r in player_results if r[8]]
         avg_points = sum(points) / len(points) if points else 0
         best_rank = min([int(r[3]) for r in player_results if r[3]], default=999)
-        
-        # Win Rate (assumendo 4 round medi)
-        total_wins = sum([float(r[4])/3 for r in player_results if r[4]])
-        win_rate = (total_wins / (tournaments_played * 4) * 100) if tournaments_played > 0 else 0
-        
+
+        # W/T/L PRECISI (da colonne 10-12)
+        total_w = 0
+        total_t = 0
+        total_l = 0
+        total_matches = 0
+
+        for r in player_results:
+            if len(r) >= 13 and r[10] and r[11] and r[12]:
+                total_w += int(r[10])
+                total_t += int(r[11])
+                total_l += int(r[12])
+            else:
+                # Fallback
+                wp = float(r[4]) if r[4] else 0
+                total_w += int(wp / 3)
+
+        total_matches = total_w + total_t + total_l
+        match_win_rate = (total_w / total_matches * 100) if total_matches > 0 else 0
+
         # Top8 Rate
         top8_rate = (top8_count / tournaments_played * 100) if tournaments_played > 0 else 0
         
@@ -496,7 +512,19 @@ def player(membership):
         # Chart data (ultimi 10)
         chart_labels = [h['date'] for h in history[::-1]]
         chart_data = [h['points'] for h in history[::-1]]
-        
+
+        # Distribuzione piazzamenti (per donut chart)
+        ranks = [int(r[3]) for r in player_results if r[3]]
+        rank_distribution = {
+            'podium': sum(1 for r in ranks if r <= 3),
+            'top8': sum(1 for r in ranks if 4 <= r <= 8),
+            'outside': sum(1 for r in ranks if r > 8)
+        }
+
+        # Consistency score (0-100)
+        rank_variance = sum((r - best_rank)**2 for r in ranks) / len(ranks) if ranks else 0
+        consistency = max(0, 100 - (rank_variance / 10))
+
         player_data = {
             'membership': membership,
             'name': player_name,
@@ -504,14 +532,20 @@ def player(membership):
             'tournaments_played': tournaments_played,
             'tournament_wins': tournament_wins,
             'top8_count': top8_count,
+            'top3_count': top3_count,
             'avg_points': round(avg_points, 1),
             'best_rank': best_rank,
-            'win_rate': round(win_rate, 1),
+            'match_win_rate': round(match_win_rate, 1),
+            'total_w': total_w,
+            'total_t': total_t,
+            'total_l': total_l,
             'top8_rate': round(top8_rate, 1),
             'trend': round(trend, 1),
+            'consistency': round(consistency, 1),
             'history': history,
             'chart_labels': chart_labels,
-            'chart_data': chart_data
+            'chart_data': chart_data,
+            'rank_distribution': rank_distribution
         }
         
         return render_template('player.html', player=player_data)
