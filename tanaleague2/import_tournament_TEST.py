@@ -766,15 +766,15 @@ def import_tournament_to_sheet(sheet, csv_path: str, season_id: str):
     print(f"   💸 Distribuito: {voucher_info.get('total_distributed', 0)}€")
     print(f"   💰 Rimane: {voucher_info.get('leftover', 0)}€")
 
-    # 6. Crea backup
-    print(f"\n💾 Creazione backup...")
-    backup_data = {
-        'csv_filename': csv_filename,
-        'date': tournament_date,
-        'participants': n_participants,
-        'config': config
-    }
-    create_backup(sheet, "IMPORT", tournament_id, f"Import {csv_filename}", backup_data)
+    # 6. Crea backup (DISABILITATO PER TEST)
+    # print(f"\n💾 Creazione backup...")
+    # backup_data = {
+    #     'csv_filename': csv_filename,
+    #     'date': tournament_date,
+    #     'participants': n_participants,
+    #     'config': config
+    # }
+    # create_backup(sheet, "IMPORT", tournament_id, f"Import {csv_filename}", backup_data)
 
     # 7. Scrivi dati nei fogli
     print(f"\n📝 Scrittura dati...")
@@ -823,28 +823,25 @@ def import_tournament_to_sheet(sheet, csv_path: str, season_id: str):
         ]
         ws_results.append_row(result_row)
 
-    # 7.3 Scrivi nel foglio Vouchers
-    print(f"   📊 Foglio Vouchers...")
-    ws_vouchers = sheet.worksheet("Vouchers")
-    for idx, row in df.head(min(8, n_participants)).iterrows():
-        membership = str(row['Membership Number']).zfill(10)
-        voucher_row = [
-            f"{tournament_id}_{membership}",
-            tournament_id,
-            membership,
-            row['User Name'],
-            int(row['Ranking']),
-            row['Record'],
-            row['Category'],
-            float(row['Voucher_Amount']),
-            float(row['Voucher_Amount']),
-            'DRAFT',
-            ''
-        ]
-        ws_vouchers.append_row(voucher_row)
-
-    # Aggiungi validazione menu a tendina Status (colonna J, dalla riga 4)
-        pass  # Ignora se la libreria non è disponibile
+    # 7.3 Scrivi nel foglio Vouchers (DISABILITATO PER TEST)
+    # print(f"   📊 Foglio Vouchers...")
+    # ws_vouchers = sheet.worksheet("Vouchers")
+    # for idx, row in df.head(min(8, n_participants)).iterrows():
+    #     membership = str(row['Membership Number']).zfill(10)
+    #     voucher_row = [
+    #         f"{tournament_id}_{membership}",
+    #         tournament_id,
+    #         membership,
+    #         row['User Name'],
+    #         int(row['Ranking']),
+    #         row['Record'],
+    #         row['Category'],
+    #         float(row['Voucher_Amount']),
+    #         float(row['Voucher_Amount']),
+    #         'DRAFT',
+    #         ''
+    #     ]
+    #     ws_vouchers.append_row(voucher_row)
 
     # 7.4 Aggiorna/crea giocatori nel foglio Players
     print(f"   📊 Foglio Players...")
@@ -951,19 +948,19 @@ def import_tournament_to_sheet(sheet, csv_path: str, season_id: str):
     if players_to_add:
         ws_players.append_rows(players_to_add, value_input_option='RAW')
 
-    # 7.5 Aggiorna classifica stagionale
-    print(f"   📊 Foglio Seasonal_Standings...")
-    update_seasonal_standings(sheet, season_id, df, tournament_date, config)
+    # 7.5 Aggiorna classifica stagionale (DISABILITATO PER TEST)
+    # print(f"   📊 Foglio Seasonal_Standings...")
+    # update_seasonal_standings(sheet, season_id, df, tournament_date, config)
 
-    # 7.6 Aggiorna Total_Tournaments in Config
-    print(f"   📊 Aggiorna Config...")
-    ws_config = sheet.worksheet("Config")
-    config_data = ws_config.get_all_values()
-    for i, row in enumerate(config_data[4:], start=5):
-        if row and row[0] == season_id:
-            current_count = int(row[5]) if row[5] else 0
-            ws_config.update_cell(i, 6, current_count + 1)
-            break
+    # 7.6 Aggiorna Total_Tournaments in Config (DISABILITATO PER TEST)
+    # print(f"   📊 Aggiorna Config...")
+    # ws_config = sheet.worksheet("Config")
+    # config_data = ws_config.get_all_values()
+    # for i, row in enumerate(config_data[4:], start=5):
+    #     if row and row[0] == season_id:
+    #         current_count = int(row[5]) if row[5] else 0
+    #         ws_config.update_cell(i, 6, current_count + 1)
+    #         break
 
     print(f"\n✅ IMPORT COMPLETATO!")
     print(f"\n📊 RIASSUNTO:")
