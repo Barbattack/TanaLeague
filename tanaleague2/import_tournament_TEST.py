@@ -846,6 +846,10 @@ def import_tournament_to_sheet(sheet, csv_path: str, season_id: str):
     # 7.4 Aggiorna/crea giocatori nel foglio Players
     print(f"   📊 Foglio Players...")
     ws_players = sheet.worksheet("Players")
+
+    # IMPORTANTE: Re-fetch Results per avere i dati appena scritti
+    import time
+    time.sleep(1)  # Aspetta che Google Sheets propaghi
     ws_results = sheet.worksheet("Results")
 
     # TCG corrente

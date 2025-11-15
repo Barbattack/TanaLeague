@@ -213,6 +213,10 @@ def import_to_sheet(data, test_mode=False):
     # 4. Update Players (con aggregazione lifetime stats come One Piece)
     if not test_mode:
         ws_players = sheet.worksheet("Players")
+
+        # IMPORTANTE: Re-fetch Results per avere i dati appena scritti
+        import time
+        time.sleep(1)  # Aspetta che Google Sheets propaghi
         ws_results = sheet.worksheet("Results")
 
         # Deriva TCG dal season_id (es: PKM-TEST01 → PKM)
