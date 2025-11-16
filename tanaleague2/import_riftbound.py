@@ -68,60 +68,67 @@ def parse_pdf(pdf_path: str, season_id: str, tournament_date: str) -> Dict:
         for page in pdf.pages:
             text += page.extract_text()
 
-    # Parse delle righe
-    lines = text.split('\n')
+    # Unisci tutto il testo in un'unica stringa per parsing multilinea
+    # Pattern: cerca blocchi che contengono rank, nome, nickname, stats
+    # Formato multilinea nel PDF:
+    # Rank
+    # Nome Cognome
+    # (Nickname)
+    # Points W-L-D OMW% GW% OGW%
 
-    # Pattern per matchare le righe dei giocatori
-    # Esempio: "1 Cogliati, Pietro (2metalupo) 12 4-0-0 62.5% 100% 62.5%"
-    player_pattern = re.compile(
-        r'^(\d+)\s+'  # Rank
-        r'(.+?)\s+'   # Nome (greedy ma limitato)
-        r'\(([^)]+)\)\s+'  # Nickname tra parentesi
-        r'(\d+)\s+'   # Points
+    # Normalizziamo il testo rimuovendo tab e spazi multipli
+    text = re.sub(r'\t+', ' ', text)
+    text = re.sub(r' +', ' ', text)
+
+    # Pattern più flessibile che cerca il blocco completo
+    # Match: Rank Nome (Nickname) Points W-L-D OMW% GW% OGW%
+    pattern = re.compile(
+        r'(\d+)\s+'  # Rank
+        r'([^(]+?)\s*'  # Nome (tutto fino alla parentesi)
+        r'\(([^)]+)\)\s*'  # (Nickname)
+        r'(\d+)\s+'  # Points
         r'(\d+)-(\d+)-(\d+)\s+'  # W-L-D
         r'([\d.]+)%\s+'  # OMW
         r'([\d.]+)%\s+'  # GW
         r'([\d.]+)%'     # OGW
     )
 
-    for line in lines:
-        line = line.strip()
-        match = player_pattern.match(line)
+    matches = pattern.findall(text)
 
-        if match:
-            rank = int(match.group(1))
-            name = match.group(2).strip()
-            nickname = match.group(3).strip()
-            points = int(match.group(4))
-            w = int(match.group(5))
-            l = int(match.group(6))
-            d = int(match.group(7))
-            omw = float(match.group(8))
-            gw = float(match.group(9))
-            ogw = float(match.group(10))
+    for match in matches:
+        rank = int(match[0])
+        name = match[1].strip()
+        nickname = match[2].strip()
+        points = int(match[3])
+        w = int(match[4])
+        l = int(match[5])
+        d = int(match[6])
+        omw = float(match[7])
+        gw = float(match[8])
+        ogw = float(match[9])
 
-            # Membership = nickname
-            membership = nickname
+        # Membership = nickname
+        membership = nickname
 
-            # Calcolo win_points (W=3, D=1, L=0)
-            win_points = w * 3 + d * 1
+        # Calcolo win_points (W=3, D=1, L=0)
+        win_points = w * 3 + d * 1
 
-            # Store player
-            players[membership] = name
+        # Store player
+        players[membership] = name
 
-            results_data.append({
-                'rank': rank,
-                'name': name,
-                'membership': membership,
-                'points': points,
-                'w': w,
-                'l': l,
-                'd': d,
-                'win_points': win_points,
-                'omw': omw,
-                'gw': gw,
-                'ogw': ogw
-            })
+        results_data.append({
+            'rank': rank,
+            'name': name,
+            'membership': membership,
+            'points': points,
+            'w': w,
+            'l': l,
+            'd': d,
+            'win_points': win_points,
+            'omw': omw,
+            'gw': gw,
+            'ogw': ogw
+        })
 
     if not results_data:
         raise ValueError("Nessun giocatore trovato nel PDF! Verifica il formato.")
