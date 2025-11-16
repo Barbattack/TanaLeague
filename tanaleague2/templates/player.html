@@ -25,7 +25,7 @@
 
 <!-- Quick Stats -->
 <div class="row mb-4">
-    <div class="col-lg-4 col-md-6 mb-3">
+    <div class="col-lg-3 col-md-6 mb-3">
         <div class="card text-center h-100 border-primary" style="border-width: 2px;">
             <div class="card-body">
                 <h6 class="text-muted mb-2">⚔️ Record Partite</h6>
@@ -38,7 +38,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-2 col-md-3 col-6 mb-3">
+    <div class="col-lg col-md-3 col-6 mb-3">
         <div class="card text-center h-100">
             <div class="card-body">
                 <h6 class="text-muted mb-1">🏆 Tornei</h6>
@@ -46,7 +46,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-2 col-md-3 col-6 mb-3">
+    <div class="col-lg col-md-3 col-6 mb-3">
         <div class="card text-center h-100 bg-warning bg-opacity-10">
             <div class="card-body">
                 <h6 class="text-muted mb-1">⭐ Vinti</h6>
@@ -54,7 +54,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-2 col-md-3 col-6 mb-3">
+    <div class="col-lg col-md-3 col-6 mb-3">
         <div class="card text-center h-100">
             <div class="card-body">
                 <h6 class="text-muted mb-1">🥉 Top3</h6>
@@ -62,11 +62,24 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-2 col-md-3 col-6 mb-3">
+    <div class="col-lg col-md-3 col-6 mb-3">
         <div class="card text-center h-100">
             <div class="card-body">
                 <h6 class="text-muted mb-1">🔥 Best</h6>
                 <h3 class="mb-0">{{ player.best_rank }}°</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-2 col-md-3 col-6 mb-3">
+        <div class="card text-center h-100 {% if player.trend > 0 %}border-success{% elif player.trend < 0 %}border-danger{% endif %}" style="{% if player.trend != 0 %}border-width: 2px;{% endif %}">
+            <div class="card-body">
+                <h6 class="text-muted mb-1">📈 Trend</h6>
+                <h3 class="mb-0 {% if player.trend > 0 %}text-success{% elif player.trend < 0 %}text-danger{% endif %}">
+                    {% if player.trend > 0 %}+{% endif %}{{ player.trend }}%
+                </h3>
+                <small class="{% if player.trend > 0 %}text-success{% elif player.trend < 0 %}text-danger{% else %}text-muted{% endif %}">
+                    {% if player.trend > 0 %}↗️ In crescita{% elif player.trend < 0 %}↘️ In calo{% else %}→ Stabile{% endif %}
+                </small>
             </div>
         </div>
     </div>
