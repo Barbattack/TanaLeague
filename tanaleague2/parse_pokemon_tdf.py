@@ -65,8 +65,13 @@ def parse_tdf(filepath, season_id):
             outcome = match.get('outcome')
             timestamp = match.find('timestamp').text if match.find('timestamp') is not None else ''
 
-            if outcome == '5':  # BYE
-                continue
+            if outcome == '5':  # BYE - conta come vittoria automatica
+                bye_player_elem = match.find('player')
+                if bye_player_elem is not None:
+                    bye_player = bye_player_elem.get('userid')
+                    if bye_player in records:
+                        records[bye_player]['w'] += 1
+                continue  # Non salvare in matches_data (nessun avversario)
 
             p1_elem = match.find('player1')
             p2_elem = match.find('player2')
