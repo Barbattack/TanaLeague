@@ -76,6 +76,15 @@ def parse_pdf(pdf_path: str, season_id: str, tournament_date: str) -> Dict:
                 for table_idx, table in enumerate(tables):
                     print(f"    Tabella {table_idx + 1}: {len(table)} righe")
 
+                    # DEBUG: Stampa TUTTE le righe per capire il formato
+                    print(f"    🐛 DEBUG - Analisi righe:")
+                    for i, row in enumerate(table):
+                        if row and len(row) > 0:
+                            rank_col = row[0] if len(row) > 0 else "N/A"
+                            name_col = row[1][:30] if len(row) > 1 and row[1] else "N/A"
+                            cols_count = len(row)
+                            print(f"      Row {i}: Cols={cols_count}, Rank=[{rank_col}], Name=[{name_col}...]")
+
                     # Processa ogni riga della tabella
                     for row_idx, row in enumerate(table):
                         if not row or len(row) < 7:
