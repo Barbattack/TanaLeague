@@ -20,6 +20,50 @@ def inject_defaults():
     return {"default_stats_scope": "OP12"}
 app.config['SECRET_KEY'] = SECRET_KEY
 
+# Jinja2 filter per formattare nomi in base al TCG
+@app.template_filter('format_player_name')
+def format_player_name(name, tcg, membership=''):
+    """
+    Formatta il nome del giocatore in base al TCG:
+    - Pokemon (PKM): "Nome I." (es. "Mario R.")
+    - Riftbound (RFB): Membership Number (nickname)
+    - One Piece (OP): Nome completo (default)
+    """
+    if not name:
+        return membership or 'N/A'
+
+    tcg_upper = (tcg or '').upper()
+
+    if tcg_upper == 'PKM':
+        # Pokemon: "Nome I." - first name + last initial
+        parts = name.split()
+        if len(parts) >= 2:
+            # Assume format "Cognome, Nome" or "Nome Cognome"
+            if ',' in name:
+                # Format: "Cognome, Nome" -> "Nome C."
+                surname, firstname = name.split(',', 1)
+                firstname = firstname.strip()
+                surname = surname.strip()
+                if surname:
+                    return f"{firstname} {surname[0]}."
+                return firstname
+            else:
+                # Format: "Nome Cognome" -> "Nome C."
+                firstname = parts[0]
+                lastname = parts[-1]
+                if lastname:
+                    return f"{firstname} {lastname[0]}."
+                return firstname
+        return name
+
+    elif tcg_upper == 'RFB':
+        # Riftbound: Mostra il membership number (nickname)
+        return membership if membership else name
+
+    else:
+        # One Piece e altri: nome completo
+        return name
+
 # ---- Safety net + endpoint di test -----------------------------------------
 @app.context_processor
 def inject_defaults():
@@ -417,6 +461,7 @@ def players_list():
                 players.append({
                     'membership': row[0],
                     'name': row[1],
+                    'tcg': row[2] if len(row) > 2 else 'OP',
                     'tournaments': int(row[4]) if len(row) > 4 and row[4] else 0,
                     'wins': int(row[5]) if len(row) > 5 and row[5] else 0,
                     'points': float(row[7]) if len(row) > 7 and row[7] else 0
@@ -436,19 +481,25 @@ def player(membership):
     data, err, meta = cache.get_data()
     if not data:
         return render_template('error.html', error='Cache non disponibile'), 500
-    
+
     # Carica sheet per player data
     try:
         sheet = cache.connect_sheet()
         ws_results = sheet.worksheet("Results")
         all_results = ws_results.get_all_values()[3:]
-        
+
         # Filtra per membership
         player_results = [r for r in all_results if r and len(r) >= 10 and r[2] == membership]
-        
+
         if not player_results:
             return render_template('error.html', error='Giocatore non trovato'), 404
-        
+
+        # Leggi TCG dal foglio Players
+        ws_players = sheet.worksheet("Players")
+        players_data = ws_players.get_all_values()[3:]
+        player_row = next((p for p in players_data if p and p[0] == membership), None)
+        player_tcg = player_row[2] if player_row and len(player_row) > 2 else 'OP'
+
         # Dati base
         player_name = player_results[0][9] if player_results[0][9] else membership
         
@@ -499,6 +550,7 @@ def player(membership):
         player_data = {
             'membership': membership,
             'name': player_name,
+            'tcg': player_tcg,
             'first_seen': first_seen,
             'tournaments_played': tournaments_played,
             'tournament_wins': tournament_wins,

@@ -136,7 +136,7 @@
                         </td>
                         <td>
                             <a href="{{ url_for('player', membership=player.membership) }}" class="text-decoration-none">
-                                <strong>{{ player.name }}</strong>
+                                <strong>{{ player.name|format_player_name(season.tcg, player.membership) }}</strong>
                             </a>
                         </td>
                         <td class="text-center"><strong>{{ player.points|int }}</strong></td>

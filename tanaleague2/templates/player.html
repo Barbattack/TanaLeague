@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ player.name }} - TanaLeague{% endblock %}
+{% block title %}{{ player.name|format_player_name(player.tcg, player.membership) }} - TanaLeague{% endblock %}
 
 {% block content %}
 <!-- Header -->
@@ -13,7 +13,7 @@
                         👤
                     </div>
                     <div>
-                        <h2 class="mb-1 text-dark">{{ player.name }}</h2>
+                        <h2 class="mb-1 text-dark">{{ player.name|format_player_name(player.tcg, player.membership) }}</h2>
                         <p class="mb-0 text-muted">Member since {{ player.first_seen }}</p>
                         <p class="mb-0"><small class="text-muted">ID: {{ player.membership }}</small></p>
                     </div>
