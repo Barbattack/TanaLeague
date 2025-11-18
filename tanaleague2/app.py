@@ -1,48 +1,129 @@
 # -*- coding: utf-8 -*-
 """
-TanaLeague - Flask Web App
-Classifiche + Stats (Spotlights · Pulse · Tales · Hall of Fame)
+=================================================================================
+TanaLeague v2.0 - Flask Web Application
+=================================================================================
 
-Patch: support BOTH /classifica/<season_id> and /classifica?season=OP12
-This avoids BuildError when templates call url_for('classifica', season=s.id).
+Webapp per gestione league TCG multi-gioco (One Piece, Pokemon, Riftbound).
+
+Funzionalità principali:
+- Homepage con link ai 3 TCG
+- Classifiche stagionali con dropdown selector
+- Profili giocatori con storico risultati e achievement sbloccati
+- Pagina achievement con catalogo completo e unlock percentages
+- Statistiche avanzate (Spotlights, Pulse, Tales, Hall of Fame)
+- Sistema cache 5-min per performance Google Sheets API
+
+Architettura:
+- Flask routes servono templates Jinja2
+- cache.py gestisce connessione Google Sheets + file-based cache
+- stats_builder.py calcola statistiche avanzate
+- achievements.py gestisce unlock automatico durante import tornei
+
+Note:
+- Support BOTH /classifica/<season_id> and /classifica?season=OP12
+  per retrocompatibilità con vecchi template
+=================================================================================
 """
 
+# ============================================================================
+# IMPORTS
+# ============================================================================
 from flask import Flask, render_template, redirect, url_for, jsonify, request
 from cache import cache
 from config import SECRET_KEY, DEBUG
-from stats_builder import build_stats  # required for stats routes
+from stats_builder import build_stats
 
 
+# ============================================================================
+# FLASK APP CONFIGURATION
+# ============================================================================
 app = Flask(__name__)
-@app.context_processor
-def inject_defaults():
-    # evita crash in base.html se il template chiede default_stats_scope
-    return {"default_stats_scope": "OP12"}
 app.config['SECRET_KEY'] = SECRET_KEY
 
-# Helper functions per conversione sicura
+@app.context_processor
+def inject_defaults():
+    """
+    Inietta variabili default nel contesto di tutti i template Jinja2.
+    Previene crash se un template usa variabile non definita (es. default_stats_scope).
+    """
+    return {"default_stats_scope": "OP12"}
+
+
+# ============================================================================
+# HELPER FUNCTIONS - Utility generiche
+# ============================================================================
+
+# --- Conversione sicura valori da Google Sheets ---
 def safe_int(value, default=0):
-    """Converte valore in int, ritorna default se fallisce"""
+    """
+    Converte valore in int gestendo errori.
+
+    Previene crash quando Google Sheets restituisce valori non numerici
+    (es. stringhe, date, celle vuote).
+
+    Args:
+        value: Valore da convertire
+        default: Valore di ritorno se conversione fallisce (default: 0)
+
+    Returns:
+        int: Valore convertito o default
+
+    Esempio:
+        safe_int("123") → 123
+        safe_int("abc") → 0
+        safe_int("2025-11-13") → 0
+        safe_int(None) → 0
+    """
     try:
         return int(value) if value and str(value).strip() else default
     except (ValueError, TypeError):
         return default
 
 def safe_float(value, default=0.0):
-    """Converte valore in float, ritorna default se fallisce"""
+    """
+    Converte valore in float gestendo errori.
+    Analogo a safe_int() ma per numeri decimali.
+
+    Args:
+        value: Valore da convertire
+        default: Valore di ritorno se conversione fallisce (default: 0.0)
+
+    Returns:
+        float: Valore convertito o default
+    """
     try:
         return float(value) if value and str(value).strip() else default
     except (ValueError, TypeError):
         return default
 
-# Jinja2 filter per formattare nomi in base al TCG
+
+# --- Jinja2 Filters Custom ---
 @app.template_filter('format_player_name')
 def format_player_name(name, tcg, membership=''):
     """
-    Formatta il nome del giocatore in base al TCG:
-    - Pokemon (PKM): "Nome I." (es. "Mario R.")
-    - Riftbound (RFB): Membership Number (nickname)
-    - One Piece (OP): Nome completo (default)
+    Filtro Jinja2 per formattare nomi giocatori in base al TCG.
+
+    Ogni TCG ha una convenzione di visualizzazione diversa:
+    - **One Piece (OP)**: Nome completo "Mario Rossi"
+    - **Pokemon (PKM)**: Nome + iniziale cognome "Mario R."
+    - **Riftbound (RFB)**: Membership number (nickname)
+
+    Questo filtro viene applicato automaticamente in tutti i template quando
+    si usa: {{ player.name | format_player_name(player.tcg, player.membership) }}
+
+    Args:
+        name (str): Nome completo giocatore dal Google Sheet
+        tcg (str): Codice TCG (OP, PKM, RFB)
+        membership (str): Membership number / nickname (per RFB)
+
+    Returns:
+        str: Nome formattato secondo convenzione TCG
+
+    Esempi:
+        format_player_name("Rossi, Mario", "PKM", "") → "Mario R."
+        format_player_name("Rossi Mario", "RFB", "HotelMotel") → "HotelMotel"
+        format_player_name("Rossi Mario", "OP", "") → "Rossi Mario"
     """
     if not name:
         return membership or 'N/A'
@@ -236,9 +317,26 @@ def inject_globals():
         default_all_scope=default_all_scope
     )
 
-# ---------- Routes: homepage & classifica (UNCHANGED logic, plus dual-route support) ----------
+# ============================================================================
+# ROUTES - HOMEPAGE
+# ============================================================================
+
 @app.route('/')
 def index():
+    """
+    Homepage principale con cards per i 3 TCG.
+
+    Mostra 3 card cliccabili:
+    - One Piece: Link alla stagione attiva o fallback alla prima disponibile
+    - Pokemon: Link alla stagione attiva o fallback
+    - Riftbound: Link alla stagione attiva o fallback
+
+    Ogni card punta a /classifica/<season_id> della rispettiva stagione attiva.
+    Le stagioni con status=ARCHIVED vengono nascoste.
+
+    Returns:
+        Template: landing.html con liste stagioni filtrate per TCG
+    """
     data, err, meta = cache.get_data()
     if not data:
         return render_template('error.html', error=err or 'Cache non disponibile'), 500
@@ -316,9 +414,27 @@ def index():
         rfb_active_season_id=rfb_active_season_id
     )
 
+
+# ============================================================================
+# ROUTES - PAGINA CLASSIFICHE (Lista Stagioni)
+# ============================================================================
+
 @app.route('/classifiche')
 def classifiche_page():
-    """Pagina dedicata alle classifiche - lista tutte le stagioni disponibili per TCG"""
+    """
+    Pagina dedicata alle classifiche - lista tutte le stagioni disponibili per TCG.
+
+    Mostra 3 sezioni (One Piece, Pokemon, Riftbound), ognuna con cards
+    per tutte le stagioni non-ARCHIVED ordinate per numero DESC.
+
+    Ogni card linka a /classifica/<season_id> per vedere la classifica
+    dettagliata della stagione.
+
+    Le stagioni ARCHIVED sono nascoste (doppio filtro: route + template).
+
+    Returns:
+        Template: classifiche_page.html con liste stagioni per TCG
+    """
     data, err, meta = cache.get_data()
     if not data:
         return render_template('error.html', error=err or 'Cache non disponibile'), 500
@@ -347,10 +463,36 @@ def classifiche_page():
         rfb_seasons=rfb_seasons_sorted
     )
 
+
+# ============================================================================
+# ROUTES - CLASSIFICA STAGIONE (Standings)
+# ============================================================================
+
 # Support BOTH /classifica and /classifica/<season_id>
 @app.route('/classifica')
 @app.route('/classifica/<season_id>')
 def classifica(season_id=None):
+    """
+    Classifica dettagliata di una singola stagione.
+
+    Mostra:
+    - Info card stagione (nome, status, date tornei, vincitore ultimo torneo)
+    - Tabella standings con rank, giocatore, tornei giocati, punti totali
+    - Dettaglio tornei della stagione (espandibile)
+
+    Supporta sia /classifica/<season_id> che /classifica?season=<season_id>
+    per retrocompatibilità con vecchi template.
+
+    Le stagioni ARCHIVED sono accessibili direttamente tramite URL ma non
+    compaiono in dropdown/liste.
+
+    Args:
+        season_id (str, optional): ID stagione (es. OP12).
+                                   Se None, usa query param ?season=
+
+    Returns:
+        Template: classifica.html con standings e info stagione
+    """
     # Accept legacy query param ?season=OP12 (from old templates)
     q_season = request.args.get('season')
     if season_id is None and q_season:
@@ -429,12 +571,34 @@ def classifica(season_id=None):
         last_tournament=last_tournament_ctx  # optional for template
     )
 
-# ---------- Stats (filtered & ordered dropdown + cache) ----------
+
+# ============================================================================
+# ROUTES - STATISTICHE AVANZATE (Stats)
+# ============================================================================
+
 @app.route('/stats/<scope>')
 def stats(scope):
     """
-    Stats per stagione (es. OP12) o all-time per TCG (es. ALL-OP).
-    Usa cache file-based per rapidità.
+    Statistiche avanzate per stagione o all-time TCG.
+
+    Mostra 4 categorie di statistiche:
+    - **Spotlights**: Record individuali (max wins, max points, streak, etc.)
+    - **Pulse**: Medie, mediane, varianza (analisi statistica)
+    - **Tales**: Pattern interessanti (comeback, consistency, volatility)
+    - **Hall of Fame**: Top 10 lifetime per vari indicatori
+
+    Scope può essere:
+    - Singola stagione (es. OP12) → stats solo per quella stagione
+    - All-time TCG (es. ALL-OP) → stats aggregate per tutti i tornei One Piece
+
+    Usa cache file-based (stats_cache.py) per performance.
+    Cache TTL: 900s (15 min).
+
+    Args:
+        scope (str): Season ID (es. OP12) o ALL-<TCG> (es. ALL-OP)
+
+    Returns:
+        Template: stats.html con 4 categorie di statistiche
     """
     from stats_cache import get_cached, set_cached
 
@@ -508,10 +672,29 @@ def api_stats_refresh(scope):
     except Exception as e:
         return jsonify({'status':'error','message': str(e)}), 500
 
-# ---------- Player Profile ----------
+
+# ============================================================================
+# ROUTES - GIOCATORI (Profili e Lista)
+# ============================================================================
+
 @app.route('/players')
 def players_list():
-    """Lista tutti i giocatori"""
+    """
+    Lista tutti i giocatori registrati.
+
+    Mostra tabella ordinata per punti totali lifetime con:
+    - Membership number
+    - Nome (formattato per TCG con filtro format_player_name)
+    - TCG principale
+    - Numero tornei giocati
+    - Numero vittorie
+    - Punti totali lifetime
+
+    Ogni riga linka al profilo dettagliato /player/<membership>.
+
+    Returns:
+        Template: players.html con lista giocatori ordinata per punti DESC
+    """
     from cache import cache
     try:
         sheet = cache.connect_sheet()
@@ -539,7 +722,26 @@ def players_list():
 
 @app.route('/player/<membership>')
 def player(membership):
-    """Scheda giocatore dettagliata"""
+    """
+    Profilo dettagliato singolo giocatore.
+
+    Mostra:
+    - Card anagrafica (nome, TCG, membership, tornei/vittorie/punti lifetime)
+    - Achievement sbloccati con emoji, rarity badges, punti totali
+    - Storico risultati tornei (tabella con tutte le partecipazioni)
+    - Grafici performance (se disponibili)
+
+    Gli achievement vengono caricati da:
+    - Achievement_Definitions (per info emoji, rarity, descrizione)
+    - Player_Achievements (per achievement sbloccati da questo giocatore)
+
+    Args:
+        membership (str): Membership number giocatore (es. 0000012345)
+
+    Returns:
+        Template: player.html con profilo completo giocatore
+        404: Se giocatore non trovato (no results in Results sheet)
+    """
     from cache import cache
     data, err, meta = cache.get_data()
     if not data:
@@ -673,9 +875,40 @@ def player(membership):
     except Exception as e:
         return render_template('error.html', error=f'Errore caricamento dati: {str(e)}'), 500
 
+
+# ============================================================================
+# ROUTES - ACHIEVEMENT SYSTEM
+# ============================================================================
+
 @app.route('/achievements')
 def achievements():
-    """Pagina achievement - mostra tutti gli achievement disponibili e statistiche unlock"""
+    """
+    Pagina catalogo achievement completo.
+
+    Mostra tutti i 40+ achievement disponibili organizzati per categoria:
+    - Glory (vittorie e trionfi)
+    - Giant Slayer (battere i migliori)
+    - Consistency (serie positive)
+    - Legacy (milestone lifetime)
+    - Wildcards (achievement bizzarri)
+    - Seasonal (performance stagionali)
+    - Heartbreak (sfortune e quasi vittorie)
+
+    Per ogni achievement visualizza:
+    - Emoji + Nome
+    - Descrizione unlock condition
+    - Rarity badge (Common → Legendary)
+    - Punti assegnati
+    - Unlock percentage (quanti giocatori l'hanno sbloccato)
+    - Progress bar visuale
+
+    I dati vengono caricati da:
+    - Achievement_Definitions (40 achievement con meta)
+    - Player_Achievements (unlock count per calcolare %)
+
+    Returns:
+        Template: achievements.html con catalogo completo
+    """
     from cache import cache
     try:
         sheet = cache.connect_sheet()
