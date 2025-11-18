@@ -1,30 +1,61 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-achievements.py - Achievement System Logic
-===========================================
+=================================================================================
+TanaLeague v2.0 - Achievement System
+=================================================================================
 
-Gestisce unlock automatico degli achievement durante import tornei.
+Sistema di unlock automatico achievement durante import tornei.
+
+ARCHITETTURA:
+- 2 fogli Google Sheets:
+  * Achievement_Definitions: 40 achievement con meta (name, points, rarity, etc.)
+  * Player_Achievements: Track unlock per giocatore
+
+WORKFLOW:
+1. Script import (CSV/PDF/TDF) chiama check_and_unlock_achievements()
+2. Per ogni giocatore del torneo:
+   - Calcola stats lifetime complete (tornei, wins, top8, streaks, etc.)
+   - Check achievement semplici (contatori: tournaments_played, wins, top8)
+   - Check achievement special (logica custom: streaks, patterns, multi-TCG)
+   - Sblocca nuovi achievement non ancora unlocked
+3. Scrive in Player_Achievements con timestamp
 
 FUNZIONI PRINCIPALI:
-- load_achievement_definitions(): Carica achievement da Google Sheet
-- check_and_unlock_achievements(): Controlla e sblocca achievement per giocatori
-- unlock_achievement(): Sblocca singolo achievement per un giocatore
+- load_achievement_definitions(): Carica achievement da Google Sheet (cache 5min)
+- calculate_player_stats(): Calcola tutte le stats lifetime del giocatore
+- check_simple_achievements(): Check achievement basati su contatori
+- check_special_achievements(): Check achievement con logica complessa
+- unlock_achievement(): Scrive unlock in Player_Achievements
+- check_and_unlock_achievements(): Main function chiamata dagli import scripts
 
 UTILIZZO negli import scripts:
     from achievements import check_and_unlock_achievements
 
     # Dopo aver importato torneo e aggiornato standings
+    data = {
+        'tournament': [tournament_id, season_id, date, n_participants, ...],
+        'players': {membership: name, ...}
+    }
     check_and_unlock_achievements(sheet, data)
+=================================================================================
 """
 
 import gspread
 from datetime import datetime
 from typing import Dict, List, Set, Tuple
 
-# Cache in-memory per achievement definitions (evita letture ripetute)
+
+# ============================================================================
+# CACHE IN-MEMORY (evita letture ripetute Achievement_Definitions)
+# ============================================================================
 _achievement_cache = None
 _cache_timestamp = None
+
+
+# ============================================================================
+# LOAD FUNCTIONS - Caricamento dati da Google Sheets
+# ============================================================================
 
 def load_achievement_definitions(sheet) -> Dict[str, Dict]:
     """
@@ -201,12 +232,35 @@ def unlock_achievement(sheet, membership: str, achievement_id: str, tournament_i
 
     ws.append_row(row_data)
 
+
+# ============================================================================
+# ACHIEVEMENT CHECK FUNCTIONS - Logica unlock
+# ============================================================================
+
 def check_simple_achievements(stats: Dict, achievements: Dict, unlocked: Set) -> List[str]:
     """
     Controlla achievement semplici basati su contatori.
 
+    Achievement "semplici" hanno requirement_type in:
+    - tournaments_played: X tornei giocati
+    - tournament_wins: X vittorie
+    - top8_count: X top8
+
+    Confronta valore stats con requirement_value.
+    Se condizione soddisfatta, aggiunge a lista unlock.
+
+    Args:
+        stats: Stats lifetime del giocatore (da calculate_player_stats)
+        achievements: Tutte le definitions (da load_achievement_definitions)
+        unlocked: Set achievement_id già sbloccati (evita duplicati)
+
     Returns:
         Lista di achievement_id da sbloccare
+
+    Esempi:
+        ACH_LEG_001 (Debutto): tournaments_played >= 1
+        ACH_GLO_001 (First Blood): tournament_wins >= 1
+        ACH_CON_001 (Hot Streak): top8_count >= 2
     """
     to_unlock = []
 
@@ -234,16 +288,34 @@ def check_simple_achievements(stats: Dict, achievements: Dict, unlocked: Set) ->
 
 def check_special_achievements(stats: Dict, achievements: Dict, unlocked: Set, current_tournament: Dict) -> List[Tuple[str, str]]:
     """
-    Controlla achievement special che richiedono logica complessa.
+    Controlla achievement "special" con logica complessa custom.
+
+    Achievement "special" hanno requirement_type = "special" e requirement_value
+    con chiave logica custom implementata in questa funzione.
+
+    Logiche supportate:
+    - streak_top8_N: N top8 consecutivi (es. streak_top8_4 = 4 top8 di fila)
+    - rookie_struggles: Primi 3 tornei con max 3 wins totali
+    - rank9_3x: Finito 9° almeno 3 volte
+    - second_3x_no_wins: Finito 2° almeno 3 volte SENZA mai vincere
+    - 10tournaments_no_top8: 10 tornei senza mai fare top8
+    - rank_7: Finito esattamente 7°
+    - rank3_3x: Finito 3° almeno 3 volte
+    - multi_tcg_3+: Almeno 3 tornei in 2+ TCG diversi
+    - top8_2tcg: Almeno 2 top8 in 2+ TCG diversi
+    - win_all_tcg: Almeno 1 vittoria in tutti e 3 i TCG (OP, PKM, RFB)
 
     Args:
-        stats: Stats del giocatore
+        stats: Stats lifetime del giocatore
         achievements: Achievement definitions
         unlocked: Achievement già sbloccati
-        current_tournament: Dati del torneo appena importato (rank, wins, etc.)
+        current_tournament: Dati torneo corrente (non sempre usato)
 
     Returns:
-        Lista di tuple (achievement_id, progress_string)
+        Lista di tuple (achievement_id, progress_string) da sbloccare
+
+    Esempio:
+        streak_top8_4 → Se max_streak_top8 >= 4, ritorna ("ACH_CON_003", "4/4")
     """
     to_unlock = []
 
@@ -327,26 +399,52 @@ def check_special_achievements(stats: Dict, achievements: Dict, unlocked: Set, c
 
     return to_unlock
 
+
+# ============================================================================
+# MAIN FUNCTION - Called by import scripts
+# ============================================================================
+
 def check_and_unlock_achievements(sheet, import_data: Dict):
     """
-    Funzione principale: controlla e sblocca achievement dopo import torneo.
+    **FUNZIONE PRINCIPALE**: Controlla e sblocca achievement dopo import torneo.
+
+    Questa funzione viene chiamata da tutti gli import scripts (One Piece,
+    Pokemon, Riftbound) DOPO aver aggiornato Results e Seasonal_Standings.
+
+    WORKFLOW COMPLETO:
+    1. Carica achievement definitions (40 achievement)
+    2. Per ogni giocatore nel torneo appena importato:
+       a. Carica achievement già sbloccati
+       b. Calcola stats lifetime complete
+       c. Check achievement semplici (contatori)
+       d. Check achievement special (logica complessa)
+       e. Sblocca nuovi achievement (scrive in Player_Achievements)
+       f. Print console con achievement sbloccati
+
+    OUTPUT CONSOLE:
+        🎮 Check achievement...
+          📋 40 achievement caricati
+          🏆 0000012345: 🎬 First Blood
+          🏆 0000067890: 📅 Regular (5/5)
+          ✅ 2 achievement sbloccati!
 
     Args:
-        sheet: Google Sheet connesso
-        import_data: Dati del torneo appena importato (formato da import scripts)
-                     Deve contenere: 'tournament', 'results', 'players'
+        sheet: Google Sheet connesso (gspread.Spreadsheet)
+        import_data (Dict): Dati torneo importato con chiavi:
+            - 'tournament': [tournament_id, season_id, date, n_participants, ...]
+            - 'players': {membership: name, ...}
 
-    Workflow:
-        1. Carica achievement definitions
-        2. Per ogni giocatore del torneo:
-           a. Carica achievement già sbloccati
-           b. Calcola stats aggiornate
-           c. Check achievement semplici (contatori)
-           d. Check achievement special (logica complessa)
-           e. Sblocca achievement nuovi
-        3. Batch write per performance
+    Returns:
+        None (scrive direttamente in Player_Achievements sheet)
+
+    Esempio chiamata da import script:
+        data = {
+            'tournament': ['OP12_2025-11-18', 'OP12', '2025-11-18', 16, ...],
+            'players': {'0000012345': 'Mario Rossi', '0000067890': 'Luigi Verdi'}
+        }
+        check_and_unlock_achievements(sheet, data)
     """
-    print("\n🎮 Controllo achievement...")
+    print("🎮 Check achievement...")
 
     # 1. Carica achievement definitions
     achievements = load_achievement_definitions(sheet)
