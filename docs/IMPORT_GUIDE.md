@@ -180,88 +180,117 @@ python parse_pokemon_tdf.py --tdf path/to/tournament.tdf --season PKM-FS25
 
 ---
 
-## 🌌 Riftbound TCG (PDF)
+## 🌌 Riftbound TCG (CSV Multi-Round)
 
 ### Formato File
 
-**Sorgente**: PDF export dal software di gestione tornei
+**Sorgente**: Export CSV dal software di gestione tornei (uno per ogni round)
 
-**Formato**: PDF con tabelle strutturate
+**Formato**: CSV con colonne strutturate (uno per round)
 
-**Struttura Richiesta**: Il PDF deve contenere almeno una tabella con:
-```
-Rank | Name (Nickname) | Points | W-L-D | OMW% | GW% | OGW%
+**Colonne Chiave:**
+```csv
+Table Number, ..., Player 1 User ID, Player 1 First Name, Player 1 Last Name, ...,
+Player 2 User ID, Player 2 First Name, Player 2 Last Name, ...,
+Player 1 Event Record, Player 2 Event Record, ...
 ```
 
-**Esempio Tabella:**
-```
-1  | Cogliati, Pietro (2metalupo) | 12 | 4-0-0 | 62.5% | 100% | 62.5%
-2  | Rossi, Mario (HotelMotel)    | 9  | 3-1-0 | 58.3% | 75%  | 60.0%
+**Esempio Riga CSV:**
+```csv
+1,false,false,false,56480,semm,riva,semriva202.08@gmail.com,97041,Giuseppe,Piazza,o0giuse0o91@gmail.com,COMPLETE,Giuseppe Piazza: 2-0-0,0-2-0,2-0-0,0-2-2,1-1-2,...
 ```
 
 **Note Importanti:**
-- Il nickname DEVE essere tra parentesi: `(nickname)`
-- Il nickname diventa il Membership Number
-- Supporta nickname con spazi: `(Hotel Motel)` funziona!
+- **User ID** (Col 5 e 9) diventa il Membership Number
+- **Event Record** (Col 17 e 18) contiene W-L-D totale torneo
+- **Multi-round**: Importa tutti i CSV insieme per stats complete!
+
+### Nome File
+
+Formato consigliato: `RFB_YYYY_MM_DD_RX.csv`
+
+Esempio:
+- `RFB_2025_11_17_R1.csv` → Round 1
+- `RFB_2025_11_17_R2.csv` → Round 2
+- `RFB_2025_11_17_R3.csv` → Round 3
 
 ### Import Command
 
+**Import Singolo Round** (ok ma meno dati):
 ```bash
 cd tanaleague2
-python import_riftbound.py --pdf path/to/tournament.pdf --season RFB01
+python import_riftbound.py --csv RFB_2025_11_17_R1.csv --season RFB01
+```
+
+**Import Multi-Round** (RACCOMANDATO):
+```bash
+cd tanaleague2
+python import_riftbound.py --csv RFB_2025_11_17_R1.csv,RFB_2025_11_17_R2.csv,RFB_2025_11_17_R3.csv --season RFB01
 ```
 
 ### Parametri
 
-- `--pdf`: Path al file PDF (obbligatorio)
+- `--csv`: Path al file CSV (o più file separati da virgola) (obbligatorio)
 - `--season`: ID stagione (es. RFB01, RFB-WIN25) (obbligatorio)
 - `--test`: Test mode (opzionale)
 
 ### Cosa Fa
 
-1. ✅ Parsa PDF con pdfplumber (estrazione tabelle)
-2. ✅ Estrae nickname da `(parentesi)`
-3. ✅ Gestisce nickname multilinea (es. `Hotel\nMotel`)
-4. ✅ Calcola punti TanaLeague
-5. ✅ Scrive in: Tournaments, Results, Players
-6. ✅ Aggiorna Seasonal_Standings_PROV
-7. ✅ Check e sblocca achievement automaticamente
+1. ✅ Parsa tutti i CSV round
+2. ✅ Aggrega risultati per User ID
+3. ✅ Estrae Event Record finale (W-L-D)
+4. ✅ Calcola ranking basato su punti Swiss (W*3 + D*1)
+5. ✅ **Traccia match wins dettagliati** (come Pokémon!)
+6. ✅ Scrive in: Tournaments, Results, Players
+7. ✅ Aggiorna Seasonal_Standings_PROV
+8. ✅ Check e sblocca achievement automaticamente
 
 ### Output Esempio
 
 ```
-🔍 Parsing PDF: RFB_2025_11_10.pdf
+🚀 IMPORT TORNEO RIFTBOUND
+📊 Stagione: RFB01
+📅 Data: 2025-11-17
+📂 File CSV: 3
 
-🔍 Strategia 1: Estrazione tabelle...
-  📊 Pagina 1: 1 tabelle trovate
-    Tabella 1: 18 righe
+📂 Parsing 3 CSV file(s)...
+   📄 Round 1: RFB_2025_11_17_R1.csv
+      ✅ 8 matches
+   📄 Round 2: RFB_2025_11_17_R2.csv
+      ✅ 8 matches
+   📄 Round 3: RFB_2025_11_17_R3.csv
+      ✅ 8 matches
 
-Giocatori trovati: 16
+   📊 16 giocatori totali trovati!
 
-🎯 Elaborazione risultati...
-  ✓ Rank 1: Cogliati, Pietro (2metalupo) - 4-0-0
-  ✓ Rank 2: Rossi, Mario (HotelMotel) - 3-1-0
-  ...
+✅ Parsing completato!
+   🏆 Winner: Riccardo Farumi
+   👥 Partecipanti: 16
+   🔄 Round: 3
 
-📊 Importazione in Google Sheet...
-✅ Tournament: RFB01_2025-11-10
+📊 Importazione Riftbound CSV...
+✅ Tournament: RFB01_2025-11-17
 ✅ Results: 16 giocatori
 ✅ Players: 4 nuovi, 12 aggiornati
-✅ Seasonal Standings aggiornate per RFB01
+
+   🔄 Aggiornamento classifica stagionale RFB01...
+      Tornei stagione: 5
+      Scarto: NESSUNO (stagione < 8 tornei)
+      ✅ Classifica aggiornata: 28 giocatori
 
 🎮 Check achievement...
-🏆 0002metalupo: 🎬 First Blood
-🏆 0002metalupo: 🎯 Podium Climber
-✅ 2 achievement sbloccati!
+✅ 8 achievement sbloccati!
 
 🎉 IMPORT COMPLETATO!
 ```
 
 ### Note Riftbound
 
-- **Display Nomi**: Mostra il nickname (Membership Number) invece del nome completo
-- **Nickname Parsing**: Robusto - gestisce spazi, multilinea, caratteri speciali
+- **User ID**: Usato come Membership Number (es. 56480, 97041)
+- **Stats Avanzate**: Con CSV multi-round hai W-L-D dettagliati come Pokémon!
 - **Sistema Punti**: W=3, D=1, L=0 (supporta pareggi)
+- **Achievement**: Sistema completo attivo con dati dettagliati
+- **Display Nomi**: Mostra First Name + Last Name del giocatore
 
 ---
 
@@ -284,7 +313,9 @@ python parse_pokemon_tdf.py --tdf file.tdf --season PKM-FS25 --test
 ### Riftbound
 
 ```bash
-python import_riftbound.py --pdf file.pdf --season RFB01 --test
+python import_riftbound.py --csv file.csv --season RFB01 --test
+# Multi-round
+python import_riftbound.py --csv R1.csv,R2.csv,R3.csv --season RFB01 --test
 ```
 
 ### Cosa Fa Test Mode
@@ -306,14 +337,15 @@ python import_riftbound.py --pdf file.pdf --season RFB01 --test
 
 ## 🔧 Troubleshooting
 
-### Errore: "Nessun giocatore trovato nel PDF"
+### Errore: "Nessun giocatore trovato nei CSV" (Riftbound)
 
-**Causa**: PDF non ha tabelle strutturate o formato non riconosciuto
+**Causa**: CSV non ha formato atteso o colonne mancanti
 
 **Soluzione**:
-1. Verifica che il PDF contenga tabelle (non solo testo)
-2. Controlla che i nickname siano tra `(parentesi)`
-3. Prova a esportare nuovamente il PDF dal software
+1. Verifica che il CSV abbia tutte le colonne richieste (almeno 18)
+2. Controlla che User ID (Col 5 e 9) siano presenti
+3. Verifica che Event Record (Col 17 e 18) esistano
+4. Prova a esportare nuovamente il CSV dal software
 
 ### Errore: "ValueError: Date format not recognized"
 
