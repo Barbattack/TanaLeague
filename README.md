@@ -34,7 +34,7 @@ Web app Flask completa per tracciare tornei, classifiche, statistiche avanzate, 
 - **📈 Statistiche Avanzate** - MVP, Sharpshooter, Metronome, Phoenix, Big Stage, Closer
 - **👤 Profili Giocatori** - Storico completo, win rate, trend, grafici, achievement
 - **📉 Analytics** - Pulse (KPI), Tales (narrative), Hall of Fame
-- **🔄 Import Automatico** - Da CSV (One Piece), TDF/XML (Pokémon), PDF (Riftbound)
+- **🔄 Import Automatico** - Da CSV (One Piece), TDF/XML (Pokémon), CSV Multi-Round (Riftbound)
 - **⚡ Cache Intelligente** - Aggiornamento automatico ogni 5 minuti
 - **🎮 Multi-TCG** - Gestione separata per 3 giochi diversi
 
@@ -57,11 +57,11 @@ Web app Flask completa per tracciare tornei, classifiche, statistiche avanzate, 
 - **Features**: Classifiche, stats, achievement, match tracking H2H
 
 ### 🌌 Riftbound TCG
-- **Status**: ✅ Completo (NEW!)
-- **Import**: PDF da software gestione tornei
+- **Status**: ✅ Completo (UPDATED!)
+- **Import**: CSV Multi-Round (uno per round, aggregati automaticamente)
 - **Sistema Punti**: W=3, D=1, L=0 (con pareggi)
-- **Display Nomi**: Membership Number (nickname)
-- **Features**: Classifiche, stats, achievement
+- **Display Nomi**: First Name + Last Name
+- **Features**: Classifiche, stats avanzate (W-L-D tracking), achievement, multi-round support
 
 ---
 
@@ -75,10 +75,11 @@ Web app Flask completa per tracciare tornei, classifiche, statistiche avanzate, 
 - Categorie: Glory, Giant Slayer, Consistency, Legacy, Wildcards, Seasonal, Heartbreak
 
 ### Riftbound Support 🌌
-- **Import PDF** completo con parsing tabelle
+- **Import CSV Multi-Round** con aggregazione automatica (R1.csv,R2.csv,R3.csv)
+- **Stats avanzate** con W-L-D tracking dettagliato (come Pokémon!)
 - **Seasonal standings** automatici
 - **Achievement unlock** integrato
-- Display nickname (Membership Number)
+- User ID come Membership Number
 
 ### Pokémon Enhancements ⚡
 - **Seasonal standings** automatici (come Riftbound/OP)
@@ -193,15 +194,23 @@ python parse_pokemon_tdf.py --tdf path/to/tournament.tdf --season PKM-FS25
 
 **Formato TDF richiesto**: Export da Play! Pokémon Tournament software
 
-### Riftbound TCG (PDF)
+### Riftbound TCG (CSV Multi-Round)
 
+**Import Singolo Round:**
 ```bash
 cd tanaleague2
-python import_riftbound.py --pdf path/to/tournament.pdf --season RFB01
+python import_riftbound.py --csv RFB_2025_11_17_R1.csv --season RFB01
 ```
 
-**Formato PDF richiesto**: PDF con tabelle da software gestione tornei
-- Deve contenere: Rank, Name (Nickname), Points, W-L-D, OMW%, GW%, OGW%
+**Import Multi-Round (RACCOMANDATO):**
+```bash
+cd tanaleague2
+python import_riftbound.py --csv RFB_2025_11_17_R1.csv,RFB_2025_11_17_R2.csv,RFB_2025_11_17_R3.csv --season RFB01
+```
+
+**Formato CSV richiesto**: Export CSV dal software gestione tornei (uno per round)
+- Deve contenere: Player User ID, First/Last Name, Event Record (W-L-D)
+- Multi-round fornisce stats dettagliate W-L-D come Pokémon!
 
 ### Test Mode (Dry Run)
 
@@ -210,7 +219,9 @@ Tutti gli import supportano `--test` per verificare senza scrivere:
 ```bash
 python import_tournament.py --csv file.csv --season OP12 --test
 python parse_pokemon_tdf.py --tdf file.tdf --season PKM-FS25 --test
-python import_riftbound.py --pdf file.pdf --season RFB01 --test
+python import_riftbound.py --csv file.csv --season RFB01 --test
+# Multi-round test
+python import_riftbound.py --csv R1.csv,R2.csv,R3.csv --season RFB01 --test
 ```
 
 ---
@@ -335,7 +346,7 @@ TanaLeague/
 │   ├── setup_achievements.py       # Script setup sheets (NEW!)
 │   │
 │   ├── import_tournament.py        # Import One Piece (CSV)
-│   ├── import_riftbound.py         # Import Riftbound (PDF) (NEW!)
+│   ├── import_riftbound.py         # Import Riftbound (CSV Multi-Round) (UPDATED!)
 │   ├── parse_pokemon_tdf.py        # Import Pokémon (TDF)
 │   │
 │   ├── stats_builder.py            # Builder statistiche
@@ -430,7 +441,6 @@ Cache si aggiorna automaticamente ogni 5 minuti.
 - **Google Sheets API**: Database backend
 - **Bootstrap 5**: Frontend framework
 - **Font Awesome**: Icone
-- **pdfplumber**: PDF parsing
 - **pandas**: Data manipulation
 - **gspread**: Google Sheets Python client
 
