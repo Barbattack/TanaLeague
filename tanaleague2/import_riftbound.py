@@ -2,58 +2,63 @@
 # -*- coding: utf-8 -*-
 """
 =================================================================================
-TanaLeague v2.0 - Riftbound TCG Tournament Import
+TanaLeague v2.0 - Riftbound TCG Tournament Import (CSV Multi-Round)
 =================================================================================
 
-Script import tornei Riftbound da PDF esportato dal software di gestione tornei.
+Script import tornei Riftbound da CSV esportati dal software di gestione tornei.
 
 FUNZIONALITÀ COMPLETE:
-1. Parsing PDF con pdfplumber:
-   - Estrazione tabelle strutturate
-   - Parsing multilinea per nickname (riga successiva tra parentesi)
-   - Supporto 2 strategie parsing (extract_tables + fallback text extraction)
+1. Parsing CSV Multi-Round:
+   - Supporto file multipli (Round 1, Round 2, Round 3, etc.)
+   - Aggregazione automatica risultati per User ID
+   - Estrazione dati dettagliati: W-L-D, Event Record, Round Record
 2. Estrazione dati:
-   - Rank, Player Name, Points (W-L-D), OMW%, Game Win%, OGW%
-   - Nickname tra parentesi (es. "2metalupo") → usato come Membership Number
+   - User ID univoco (usato come Membership Number)
+   - Nome completo (First Name + Last Name)
+   - Event Record finale (dal CSV ultimo round)
+   - Match wins dettagliati per stats avanzate
 3. Calcolo punti TanaLeague:
    - Win points: Wins * 3 + Draws * 1
    - Ranking points: (n_partecipanti - rank + 1)
    - Punti totali: Win points + Ranking points
 4. Scrittura Google Sheets:
    - Tournaments: Meta torneo
-   - Results: Risultati individuali giocatori
-   - Players: Anagrafica giocatori (update con nickname come membership)
+   - Results: Risultati individuali giocatori con W-L-D
+   - Players: Anagrafica giocatori (update con User ID come membership)
 5. Aggiornamento Seasonal_Standings_PROV (live rankings con drop logic)
 6. Achievement unlock automatico per tutti i partecipanti
 
-FORMATO PDF ATTESO (con tabelle strutturate):
-    Rank  Player                    Points  W-L-D   OMW    GW     OGW
-    1     Cogliati, Pietro          12      4-0-0   62.5%  100%   62.5%
-          (2metalupo)
-    2     Rossi, Mario              9       3-1-0   60.0%  75%    58.0%
-          (MarioKart)
-
-IMPORTANTE:
-- Nickname tra parentesi è OBBLIGATORIO (usato come membership number)
-- Tabelle devono essere strutturate (colonne allineate)
-- Se parsing fallisce, usa strategia fallback text extraction
+FORMATO CSV ATTESO (da software Riftbound):
+    Colonne chiave:
+    - Col 5: Player 1 User ID
+    - Col 6-7: Player 1 First/Last Name
+    - Col 9: Player 2 User ID
+    - Col 10-11: Player 2 First/Last Name
+    - Col 13: Match Result
+    - Col 17: Player 1 Event Record (W-L-D totale torneo)
+    - Col 18: Player 2 Event Record
 
 UTILIZZO:
-    # Import normale
-    python import_riftbound.py --pdf tournament.pdf --season RFB01
+    # Import singolo round
+    python import_riftbound.py --csv RFB_2025_11_17_R1.csv --season RFB01
+
+    # Import multi-round (RACCOMANDATO)
+    python import_riftbound.py --csv RFB_2025_11_17_R1.csv,RFB_2025_11_17_R2.csv,RFB_2025_11_17_R3.csv --season RFB01
 
     # Test mode (dry run, no write)
-    python import_riftbound.py --pdf tournament.pdf --season RFB01 --test
+    python import_riftbound.py --csv file1.csv,file2.csv --season RFB01 --test
 
 REQUIREMENTS:
-    pip install gspread google-auth pdfplumber
+    pip install gspread google-auth
 
 OUTPUT CONSOLE:
-    🚀 IMPORT TORNEO RIFTBOUND: tournament.pdf
+    🚀 IMPORT TORNEO RIFTBOUND: 3 CSV files
     📊 Stagione: RFB01
-    📂 Parsing PDF...
-       🔍 Strategia 1: Estrazione tabelle...
-       ✅ 16 giocatori trovati
+    📂 Parsing CSV...
+       ✅ Round 1: 8 matches
+       ✅ Round 2: 8 matches
+       ✅ Round 3: 8 matches
+       📊 16 giocatori totali
     💾 Scrittura dati... ✅
     📈 Aggiornamento standings... ✅
     🎮 Check achievement... ✅
@@ -61,12 +66,12 @@ OUTPUT CONSOLE:
 =================================================================================
 """
 
+import csv
 import re
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import argparse
-import pdfplumber
 from typing import Dict, List
 from achievements import check_and_unlock_achievements
 
@@ -81,21 +86,25 @@ def connect_sheet():
     client = gspread.authorize(creds)
     return client.open_by_key(SHEET_ID)
 
-def extract_nickname(player_line: str) -> str:
+def parse_wld_record(record_str: str) -> tuple:
     """
-    Estrae il nickname dalle parentesi.
-    Input: "Cogliati, Pietro (2metalupo)"
-    Output: "2metalupo"
+    Parse W-L-D record string.
+    Input: "2-1-0" or "3-0-1"
+    Output: (wins, losses, draws)
     """
-    match = re.search(r'\(([^)]+)\)', player_line)
+    match = re.match(r'(\d+)-(\d+)-(\d+)', record_str.strip())
     if match:
-        return match.group(1)
-    return ""
+        return int(match.group(1)), int(match.group(2)), int(match.group(3))
+    return 0, 0, 0
 
-def parse_pdf(pdf_path: str, season_id: str, tournament_date: str) -> Dict:
+def parse_csv_rounds(csv_files: List[str], season_id: str, tournament_date: str) -> Dict:
     """
-    Legge il PDF e estrae i dati del torneo.
-    Usa strategia ibrida: tabelle + testo + layout analysis.
+    Legge tutti i CSV dei round e aggrega i risultati finali.
+
+    Args:
+        csv_files: Lista di path ai CSV (uno per round)
+        season_id: ID stagione (es. RFB01)
+        tournament_date: Data torneo (YYYY-MM-DD)
 
     Returns:
         Dict con chiavi:
@@ -103,118 +112,97 @@ def parse_pdf(pdf_path: str, season_id: str, tournament_date: str) -> Dict:
         - results: [[result_id, tid, membership, rank, win_points, omw, pts_victory, pts_ranking, pts_total, name, w, t, l], ...]
         - players: {membership: name, ...}
     """
-    print(f"📄 Apertura PDF: {pdf_path}")
+    print(f"📂 Parsing {len(csv_files)} CSV file(s)...")
 
     tournament_id = f"{season_id}_{tournament_date}"
+    players_data = {}  # user_id -> {name, event_record, rounds_played}
+
+    # Leggi tutti i CSV
+    for csv_idx, csv_path in enumerate(csv_files, 1):
+        print(f"   📄 Round {csv_idx}: {csv_path.split('/')[-1]}")
+
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            header = next(reader)  # Skip header
+
+            match_count = 0
+            for row in reader:
+                if len(row) < 18:
+                    continue
+
+                # Player 1
+                p1_id = row[4].strip()
+                p1_first = row[5].strip()
+                p1_last = row[6].strip()
+                p1_event_record = row[16].strip() if len(row) > 16 else ""
+
+                # Player 2
+                p2_id = row[8].strip()
+                p2_first = row[9].strip()
+                p2_last = row[10].strip()
+                p2_event_record = row[17].strip() if len(row) > 17 else ""
+
+                if not p1_id or not p2_id:
+                    continue
+
+                match_count += 1
+
+                # Memorizza dati giocatori (sovrascrive con ogni round, l'ultimo avrà il record finale)
+                if p1_id:
+                    players_data[p1_id] = {
+                        'name': f"{p1_first} {p1_last}".strip(),
+                        'event_record': p1_event_record,
+                        'rounds_played': csv_idx
+                    }
+
+                if p2_id:
+                    players_data[p2_id] = {
+                        'name': f"{p2_first} {p2_last}".strip(),
+                        'event_record': p2_event_record,
+                        'rounds_played': csv_idx
+                    }
+
+            print(f"      ✅ {match_count} matches")
+
+    if not players_data:
+        raise ValueError("❌ Nessun giocatore trovato nei CSV! Verifica il formato.")
+
+    print(f"\n   📊 {len(players_data)} giocatori totali trovati!")
+
+    # Calcola ranking finale basato su Event Record dell'ultimo round
     results_data = []
-    players = {}
 
-    with pdfplumber.open(pdf_path) as pdf:
-        # STRATEGIA 1: Prova estrazione tabelle (più affidabile)
-        print("🔍 Strategia 1: Estrazione tabelle...")
+    for user_id, data in players_data.items():
+        w, l, d = parse_wld_record(data['event_record'])
 
-        for page_num, page in enumerate(pdf.pages, 1):
-            tables = page.extract_tables()
-            if tables:
-                print(f"  📊 Pagina {page_num}: {len(tables)} tabelle trovate")
+        # Calcola punti Swiss (come MTG/Pokemon)
+        points = w * 3 + d * 1
 
-                for table_idx, table in enumerate(tables):
-                    print(f"    Tabella {table_idx + 1}: {len(table)} righe")
+        results_data.append({
+            'membership': user_id,
+            'name': data['name'],
+            'w': w,
+            'l': l,
+            'd': d,
+            'points': points,
+            'rounds_played': data['rounds_played']
+        })
 
-                    # Processa ogni riga della tabella
-                    for row_idx, row in enumerate(table):
-                        if not row or len(row) < 7:
-                            continue
+    # Ordina per punti (poi per wins se pari punti)
+    results_data.sort(key=lambda x: (x['points'], x['w']), reverse=True)
 
-                        # Formato: [Rank, Name\n(Nick), Points, W-L-D, OMW%, GW%, OGW%]
-                        try:
-                            rank_str = row[0].strip() if row[0] else ""
-                            name_nick = row[1].strip() if row[1] else ""
-                            points_str = row[2].strip() if row[2] else ""
-                            wld_str = row[3].strip() if row[3] else ""
-                            omw_str = row[4].strip().replace('%', '') if row[4] else ""
-                            gw_str = row[5].strip().replace('%', '') if row[5] else ""
-                            ogw_str = row[6].strip().replace('%', '') if row[6] else ""
-
-                            # Valida rank (deve essere numero)
-                            if not rank_str.isdigit():
-                                continue
-
-                            rank = int(rank_str)
-
-                            # Estrai nome e nickname
-                            # Il nickname può essere su una riga o spezzato su due righe
-                            # Esempio 1: "Cogliati, Pietro\n(2metalupo)"
-                            # Esempio 2: "Scarinzi, Matteo (Hotel\nMotel)" ← nickname con spazio spezzato!
-
-                            # Cerca nickname nell'INTERO testo (gestisce entrambi i casi)
-                            nick_match = re.search(r'\(([^)]+)\)', name_nick)
-                            if not nick_match:
-                                # Nessun nickname trovato - skippa
-                                continue
-
-                            nickname = nick_match.group(1).replace('\n', ' ').strip()
-
-                            # Nome è tutto quello prima del nickname
-                            name = name_nick[:nick_match.start()].replace('\n', ' ').strip()
-
-                            # Parse W-L-D
-                            wld_match = re.match(r'(\d+)-(\d+)-(\d+)', wld_str)
-                            if not wld_match:
-                                continue
-
-                            w = int(wld_match.group(1))
-                            l = int(wld_match.group(2))
-                            d = int(wld_match.group(3))
-
-                            points = int(points_str)
-                            omw = float(omw_str) if omw_str else 0.0
-                            gw = float(gw_str) if gw_str else 0.0
-                            ogw = float(ogw_str) if ogw_str else 0.0
-
-                            win_points = w * 3 + d * 1
-
-                            players[nickname] = name
-
-                            results_data.append({
-                                'rank': rank,
-                                'name': name,
-                                'membership': nickname,
-                                'points': points,
-                                'w': w,
-                                'l': l,
-                                'd': d,
-                                'win_points': win_points,
-                                'omw': omw,
-                                'gw': gw,
-                                'ogw': ogw
-                            })
-
-                            print(f"  ✓ Rank {rank}: {name} ({nickname}) - {w}-{l}-{d}")
-
-                        except (ValueError, IndexError, AttributeError) as e:
-                            # Skip righe malformate
-                            continue
-
-    # Fine estrazione PDF
-    if not results_data:
-        raise ValueError("❌ Nessun giocatore trovato nel PDF! Verifica il formato.")
-
-    print(f"\n✅ Parsing completato: {len(results_data)} giocatori trovati!")
-    # Ordina per rank
-    results_data.sort(key=lambda x: x['rank'])
+    # Assegna rank
+    for rank, player in enumerate(results_data, 1):
+        player['rank'] = rank
 
     n_participants = len(results_data)
-
-    # Calcola rounds dal record del primo (assumendo tutti giocano stesso numero)
-    first_player = results_data[0]
-    n_rounds = first_player['w'] + first_player['l'] + first_player['d']
+    n_rounds = max(p['rounds_played'] for p in results_data)
 
     # Calcola punti TanaLeague
     formatted_results = []
     for r in results_data:
         rank = r['rank']
-        win_points = r['win_points']
+        win_points = r['w'] * 3 + r['d'] * 1
 
         # Formula TanaLeague
         points_victory = win_points / 3
@@ -229,7 +217,7 @@ def parse_pdf(pdf_path: str, season_id: str, tournament_date: str) -> Dict:
             r['membership'],
             rank,
             win_points,
-            round(r['omw'], 2),
+            0,  # OMW (non disponibile nei CSV, lasciamo 0)
             round(points_victory, 2),
             round(points_ranking, 2),
             round(points_total, 2),
@@ -243,16 +231,25 @@ def parse_pdf(pdf_path: str, season_id: str, tournament_date: str) -> Dict:
     winner_name = results_data[0]['name']
 
     # Tournament metadata
+    csv_filenames = ",".join([f.split('/')[-1] for f in csv_files])
     tournament_data = [
         tournament_id,
         season_id,
         tournament_date,
         n_participants,
         n_rounds,
-        f"{pdf_path.split('/')[-1]}",
+        csv_filenames,
         datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         winner_name
     ]
+
+    # Players dict (membership -> name)
+    players = {r['membership']: r['name'] for r in results_data}
+
+    print(f"\n✅ Parsing completato!")
+    print(f"   🏆 Winner: {winner_name}")
+    print(f"   👥 Partecipanti: {n_participants}")
+    print(f"   🔄 Round: {n_rounds}")
 
     return {
         'tournament': tournament_data,
@@ -485,7 +482,7 @@ def import_to_sheet(data: Dict, test_mode: bool = False):
     if not check_duplicate_tournament(sheet, tid):
         return
 
-    print(f"\n📊 Importazione Riftbound PDF...")
+    print(f"\n📊 Importazione Riftbound CSV...")
     if test_mode:
         print("⚠️  TEST MODE - Nessuna scrittura effettiva\n")
 
@@ -639,8 +636,8 @@ def import_to_sheet(data: Dict, test_mode: bool = False):
 
 def parse_date_from_filename(filename: str) -> str:
     """
-    Estrae data dal nome file PDF.
-    Formato atteso: RFB_YYYY_MM_DD.pdf
+    Estrae data dal nome file CSV.
+    Formato atteso: RFB_YYYY_MM_DD_RX.csv
     """
     match = re.search(r'(\d{4})[_-](\d{1,2})[_-](\d{1,2})', filename)
     if match:
@@ -652,19 +649,23 @@ def parse_date_from_filename(filename: str) -> str:
     return datetime.now().strftime('%Y-%m-%d')
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Import Riftbound tournament from PDF')
-    parser.add_argument('--pdf', required=True, help='Path to PDF file')
+    parser = argparse.ArgumentParser(description='Import Riftbound tournament from CSV (multi-round support)')
+    parser.add_argument('--csv', required=True, help='Path to CSV file(s), comma-separated for multi-round (es: R1.csv,R2.csv,R3.csv)')
     parser.add_argument('--season', required=True, help='Season ID (es: RFB01)')
     parser.add_argument('--test', action='store_true', help='Test mode (no write)')
 
     args = parser.parse_args()
 
-    # Parse date from filename
-    tournament_date = parse_date_from_filename(args.pdf)
+    # Parse CSV list
+    csv_files = [f.strip() for f in args.csv.split(',')]
 
-    print(f"🔍 Parsing PDF: {args.pdf}")
-    print(f"📅 Season: {args.season}")
-    print(f"📆 Date: {tournament_date}\n")
+    # Parse date from first filename
+    tournament_date = parse_date_from_filename(csv_files[0])
 
-    data = parse_pdf(args.pdf, args.season, tournament_date)
+    print(f"🚀 IMPORT TORNEO RIFTBOUND")
+    print(f"📊 Stagione: {args.season}")
+    print(f"📅 Data: {tournament_date}")
+    print(f"📂 File CSV: {len(csv_files)}\n")
+
+    data = parse_csv_rounds(csv_files, args.season, tournament_date)
     import_to_sheet(data, test_mode=args.test)
