@@ -1,6 +1,63 @@
 # -*- coding: utf-8 -*-
 """
-parse_pokemon_tdf.py - Pokemon Tournament Import from TDF
+=================================================================================
+TanaLeague v2.0 - Pokémon TCG Tournament Import
+=================================================================================
+
+Script import tornei Pokémon da file TDF/XML esportato da Play! Pokémon Tournament software.
+
+FUNZIONALITÀ COMPLETE:
+1. Parsing TDF/XML (formato ufficiale Play! Pokémon):
+   - Tournament meta (nome, ID, date, n_rounds)
+   - Player list con membership numbers
+   - Standings finali (rank, points, W-D-L record, OMW%)
+   - Match H2H (head-to-head per future features)
+2. Calcolo punti TanaLeague:
+   - Punti: Wins * 3 + Draws * 1
+   - Ranking points: (n_partecipanti - rank + 1)
+   - Punti totali: Win points + Ranking points
+3. Scrittura Google Sheets:
+   - Tournaments: Meta torneo
+   - Results: Risultati individuali giocatori
+   - Players: Anagrafica giocatori (update)
+   - Pokemon_Matches: Match H2H (opzionale)
+4. Aggiornamento Seasonal_Standings_PROV (live rankings con drop logic)
+5. Achievement unlock automatico per tutti i partecipanti
+
+UTILIZZO:
+    # Import normale
+    python parse_pokemon_tdf.py --tdf tournament.tdf --season PKM-FS25
+
+    # Test mode (dry run, no write)
+    python parse_pokemon_tdf.py --tdf tournament.tdf --season PKM-FS25 --test
+
+FORMATO TDF (XML Play! Pokémon):
+    <?xml version="1.0"?>
+    <tournament>
+      <name>Fall League 2025</name>
+      <players>
+        <player id="12345" name="Mario Rossi" />
+      </players>
+      <standings>
+        <standing rank="1" player="12345" points="12" record="4-0-0" />
+      </standings>
+    </tournament>
+
+REQUIREMENTS:
+    pip install gspread google-auth
+
+OUTPUT CONSOLE:
+    🚀 IMPORT TORNEO POKEMON: tournament.tdf
+    📊 Stagione: PKM-FS25
+    📂 Parsing TDF... ✅
+    👥 Partecipanti: 12
+    🎮 Round: 4
+    🏆 Vincitore: Mario Rossi
+    💾 Scrittura dati... ✅
+    📈 Aggiornamento standings... ✅
+    🎮 Check achievement... ✅
+    ✅ IMPORT COMPLETATO!
+=================================================================================
 """
 
 import xml.etree.ElementTree as ET

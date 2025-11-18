@@ -1,23 +1,66 @@
 #!/usr/bin/env python3
 """
-PULCI LEAGUE - Tournament Import Script
-========================================
+=================================================================================
+TanaLeague v2.0 - One Piece TCG Tournament Import
+=================================================================================
 
-Questo script importa i CSV dei tornei nel Google Sheet Pulci League.
+Script import tornei One Piece da CSV esportato dal portale Bandai ufficiale.
 
-COSA FA:
-1. Legge il CSV del torneo
-2. Calcola i punti (vittoria + ranking)
-3. Identifica X-0, X-1, Altri
-4. Calcola i buoni negozio
-5. Aggiorna tutte le classifiche
-6. Crea backup automatico
+FUNZIONALITÀ COMPLETE:
+1. Parsing CSV (Ranking, User Name, Membership, Win Points, OMW%, Record)
+2. Estrazione data torneo da nome file (YYYY_MM_DD, DD_MM_YYYY, etc.)
+3. Calcolo punti TanaLeague:
+   - Punti vittoria: Win Points * 3
+   - Punti ranking: (n_partecipanti - rank + 1)
+   - Punti totali: Vittoria + Ranking
+4. Identificazione categorie buoni:
+   - X-0: Vincitori senza sconfitte
+   - X-1: Giocatori con 1 sola sconfitta
+   - Altri: Resto dei partecipanti
+5. Calcolo distribuzione buoni negozio:
+   - Fondo totale: entry_fee * n_participants
+   - Costo buste: pack_cost * n_participants
+   - Distribuzione: 50% X-0, 30% X-1, 20% Altri
+6. Scrittura Google Sheets:
+   - Tournaments: Meta torneo
+   - Results: Risultati individuali giocatori
+   - Vouchers: Buoni negozio assegnati
+   - Players: Anagrafica giocatori (update)
+7. Aggiornamento Seasonal_Standings_PROV (live rankings)
+8. Achievement unlock automatico per tutti i partecipanti
+9. Backup automatico in Backup_Log (sovrascrittura safe)
 
 UTILIZZO:
-    python import_tournament.py --csv path/to/tournament.csv --season OP12
+    # Import normale
+    python import_tournament.py --csv 2025_11_18_OP12.csv --season OP12
+
+    # Test mode (dry run, no write)
+    python import_tournament.py --csv tournament.csv --season OP12 --test
+
+FORMATO CSV (portale Bandai):
+    Ranking,User Name,Membership Number,Win Points,OMW %,Record
+    1,Cogliati Pietro,12345,12,65.5,4-0
+    2,Rossi Mario,67890,9,62.3,3-1
 
 REQUIREMENTS:
     pip install gspread google-auth pandas
+
+OUTPUT CONSOLE:
+    🚀 IMPORT TORNEO: 2025_11_18_OP12.csv
+    📊 Stagione: OP12
+    📂 Lettura CSV... ✅
+    👥 Partecipanti: 16
+    📅 Data: 2025-11-18
+    🎮 Round: 4
+    🏆 Vincitore: Pietro Cogliati
+    ⚙️  Configurazione OP12... ✅
+    🧮 Calcolo punti... ✅
+    💰 Calcolo buoni... ✅
+    💾 Scrittura dati... ✅
+    📈 Aggiornamento standings... ✅
+    🎮 Check achievement... ✅
+    ✅ IMPORT COMPLETATO!
+=================================================================================
 """
 
 import pandas as pd

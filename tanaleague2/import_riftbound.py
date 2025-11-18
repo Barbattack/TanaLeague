@@ -1,20 +1,64 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-import_riftbound.py - Riftbound Tournament Import from PDF
-============================================================
+=================================================================================
+TanaLeague v2.0 - Riftbound TCG Tournament Import
+=================================================================================
 
-Importa tornei Riftbound da PDF esportati dal software di gestione.
+Script import tornei Riftbound da PDF esportato dal software di gestione tornei.
 
-FORMATO PDF ATTESO:
-Rank  Player                    Points  W-L-D   OMW    GW     OGW
-1     Cogliati, Pietro          12      4-0-0   62.5%  100%   62.5%
-      (2metalupo)
+FUNZIONALITÀ COMPLETE:
+1. Parsing PDF con pdfplumber:
+   - Estrazione tabelle strutturate
+   - Parsing multilinea per nickname (riga successiva tra parentesi)
+   - Supporto 2 strategie parsing (extract_tables + fallback text extraction)
+2. Estrazione dati:
+   - Rank, Player Name, Points (W-L-D), OMW%, Game Win%, OGW%
+   - Nickname tra parentesi (es. "2metalupo") → usato come Membership Number
+3. Calcolo punti TanaLeague:
+   - Win points: Wins * 3 + Draws * 1
+   - Ranking points: (n_partecipanti - rank + 1)
+   - Punti totali: Win points + Ranking points
+4. Scrittura Google Sheets:
+   - Tournaments: Meta torneo
+   - Results: Risultati individuali giocatori
+   - Players: Anagrafica giocatori (update con nickname come membership)
+5. Aggiornamento Seasonal_Standings_PROV (live rankings con drop logic)
+6. Achievement unlock automatico per tutti i partecipanti
+
+FORMATO PDF ATTESO (con tabelle strutturate):
+    Rank  Player                    Points  W-L-D   OMW    GW     OGW
+    1     Cogliati, Pietro          12      4-0-0   62.5%  100%   62.5%
+          (2metalupo)
+    2     Rossi, Mario              9       3-1-0   60.0%  75%    58.0%
+          (MarioKart)
+
+IMPORTANTE:
+- Nickname tra parentesi è OBBLIGATORIO (usato come membership number)
+- Tabelle devono essere strutturate (colonne allineate)
+- Se parsing fallisce, usa strategia fallback text extraction
 
 UTILIZZO:
-    python import_riftbound.py --pdf path/to/tournament.pdf --season RFB01
+    # Import normale
+    python import_riftbound.py --pdf tournament.pdf --season RFB01
 
-Il nickname tra parentesi viene usato come Membership Number.
+    # Test mode (dry run, no write)
+    python import_riftbound.py --pdf tournament.pdf --season RFB01 --test
+
+REQUIREMENTS:
+    pip install gspread google-auth pdfplumber
+
+OUTPUT CONSOLE:
+    🚀 IMPORT TORNEO RIFTBOUND: tournament.pdf
+    📊 Stagione: RFB01
+    📂 Parsing PDF...
+       🔍 Strategia 1: Estrazione tabelle...
+       ✅ 16 giocatori trovati
+    💾 Scrittura dati... ✅
+    📈 Aggiornamento standings... ✅
+    🎮 Check achievement... ✅
+    ✅ IMPORT COMPLETATO!
+=================================================================================
 """
 
 import re
