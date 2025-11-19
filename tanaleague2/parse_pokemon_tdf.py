@@ -464,29 +464,88 @@ def import_to_sheet(data, test_mode=False):
     # 4. Update Players
     if not test_mode:
         ws_players = sheet.worksheet("Players")
-        existing_players = ws_players.col_values(1)[3:]
+        all_player_rows = ws_players.get_all_values()[3:]  # Skip header
+
+        # Crea mapping membership -> [row_index, row_data]
+        player_map = {}
+        for i, row in enumerate(all_player_rows, start=4):  # Start from row 4
+            if row and row[0]:
+                player_map[row[0]] = {'index': i, 'data': row}
+
         new_players = []
+        rows_to_update = []
+
+        # Calcola statistiche dal torneo corrente per ogni giocatore
+        player_stats = {}
+        for result in data['results']:
+            membership = result[2]
+            rank = result[3]
+            w = result[10]  # Match_W
+            match_points = result[8]  # Points_Total
+
+            player_stats[membership] = {
+                'rank': rank,
+                'wins': 1 if rank == 1 else 0,
+                'match_wins': w,
+                'points': match_points
+            }
 
         for uid, name in data['players'].items():
             uid_padded = uid.zfill(10)
-            if uid_padded not in existing_players:
+            stats = player_stats.get(uid_padded, {'rank': 999, 'wins': 0, 'match_wins': 0, 'points': 0})
+
+            if uid_padded in player_map:
+                # Aggiorna giocatore esistente
+                existing = player_map[uid_padded]
+                old_data = existing['data']
+
+                # Leggi valori esistenti
+                first_seen = old_data[2] if len(old_data) > 2 else data['tournament'][2]
+                last_seen = data['tournament'][2]
+                tournaments = int(old_data[4]) + 1 if len(old_data) > 4 and old_data[4] else 1
+                wins = int(old_data[5]) + stats['wins'] if len(old_data) > 5 and old_data[5] else stats['wins']
+                match_wins = int(old_data[6]) + stats['match_wins'] if len(old_data) > 6 and old_data[6] else stats['match_wins']
+                total_points = to_float(old_data[7]) + stats['points'] if len(old_data) > 7 and old_data[7] else stats['points']
+
+                updated_row = [
+                    uid_padded,
+                    name,
+                    first_seen,
+                    last_seen,
+                    tournaments,
+                    wins,
+                    match_wins,
+                    total_points
+                ]
+
+                rows_to_update.append({
+                    'range': f"A{existing['index']}:H{existing['index']}",
+                    'values': [updated_row]
+                })
+            else:
+                # Nuovo giocatore
                 new_players.append([
                     uid_padded,
                     name,
                     data['tournament'][2],  # first_seen
                     data['tournament'][2],  # last_seen
                     1,  # tournaments
-                    0,  # wins
-                    0,  # match_wins
-                    0   # total_points
+                    stats['wins'],  # wins
+                    stats['match_wins'],  # match_wins
+                    stats['points']  # total_points
                 ])
 
+        # Batch update giocatori esistenti
+        if rows_to_update:
+            ws_players.batch_update(rows_to_update, value_input_option='RAW')
+
+        # Batch append nuovi giocatori
         if new_players:
             ws_players.append_rows(new_players, value_input_option='RAW')
-        print(f"✅ Players: {len(new_players)} nuovi")
+
+        print(f"✅ Players: {len(rows_to_update)} aggiornati, {len(new_players)} nuovi")
     else:
         # Test mode - simulate
-        new_count = sum(1 for uid in data['players'].keys() if uid.zfill(10) not in [])
         print(f"✅ Players: {len(data['players'])} totali")
 
     # 5. Aggiorna Seasonal_Standings
