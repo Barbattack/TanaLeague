@@ -458,8 +458,10 @@ def check_and_unlock_achievements(sheet, import_data: Dict):
         print("  ⚠️  Nessun giocatore nel torneo, skip achievement check")
         return
 
-    # 3. Processo ogni giocatore
+    # 3. Processo ogni giocatore e raccogli achievement da sbloccare (BATCH)
     total_unlocked = 0
+    achievements_to_unlock = []  # Lista di [membership, ach_id, date, tournament_id, progress]
+
     for membership in players_in_tournament.keys():
         membership_padded = membership.zfill(10)
 
@@ -476,21 +478,38 @@ def check_and_unlock_achievements(sheet, import_data: Dict):
         current_tournament_data = {}  # TODO: estrarre da import_data
         special_unlocks = check_special_achievements(stats, achievements, unlocked, current_tournament_data)
 
-        # Sblocca achievement
+        # Raccogli achievement da sbloccare (non scrivere ancora!)
+        unlocked_date = datetime.now().strftime("%Y-%m-%d")
+
         for ach_id in simple_unlocks:
-            unlock_achievement(sheet, membership_padded, ach_id, tournament_id)
+            achievements_to_unlock.append([
+                membership_padded,
+                ach_id,
+                unlocked_date,
+                tournament_id,
+                ""  # progress vuoto
+            ])
             total_unlocked += 1
             print(f"  🏆 {membership_padded}: {achievements[ach_id]['emoji']} {achievements[ach_id]['name']}")
 
         for ach_id, progress in special_unlocks:
-            unlock_achievement(sheet, membership_padded, ach_id, tournament_id, progress)
+            achievements_to_unlock.append([
+                membership_padded,
+                ach_id,
+                unlocked_date,
+                tournament_id,
+                progress
+            ])
             total_unlocked += 1
             print(f"  🏆 {membership_padded}: {achievements[ach_id]['emoji']} {achievements[ach_id]['name']} ({progress})")
 
-    if total_unlocked == 0:
-        print("  ✅ Nessun nuovo achievement sbloccato")
-    else:
+    # 4. BATCH WRITE - scrivi TUTTI gli achievement in una volta sola!
+    if achievements_to_unlock:
+        ws_player_ach = sheet.worksheet("Player_Achievements")
+        ws_player_ach.append_rows(achievements_to_unlock, value_input_option='RAW')
         print(f"  ✅ {total_unlocked} achievement sbloccati!")
+    else:
+        print("  ✅ Nessun nuovo achievement sbloccato")
 
 # === HELPER FUNCTIONS PER ACHIEVEMENT AVANZATI (FASE 2) ===
 
