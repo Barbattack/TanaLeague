@@ -446,12 +446,28 @@ def check_and_unlock_achievements(sheet, import_data: Dict):
     """
     print("🎮 Check achievement...")
 
+    # 0. Controlla se stagione è ARCHIVED (skip achievement per stagioni archiviate)
+    tournament_id = import_data['tournament'][0]
+    season_id = import_data['tournament'][1]
+
+    ws_config = sheet.worksheet("Config")
+    config_data = ws_config.get_all_values()
+
+    season_status = None
+    for row in config_data[4:]:  # Skip header (righe 1-3)
+        if row and row[0] == season_id:  # Col 0 = Season_ID
+            season_status = row[4].strip().upper() if len(row) > 4 else ""  # Col 4 = Status
+            break
+
+    if season_status == "ARCHIVED":
+        print(f"  ⚠️  Stagione {season_id} è ARCHIVED - skip achievement check")
+        return
+
     # 1. Carica achievement definitions
     achievements = load_achievement_definitions(sheet)
     print(f"  📋 {len(achievements)} achievement caricati")
 
     # 2. Estrai info torneo
-    tournament_id = import_data['tournament'][0]
     players_in_tournament = import_data.get('players', {})
 
     if not players_in_tournament:
