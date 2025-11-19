@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Import {{ tcg }} - TanaLeague Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1>
+            <i class="fas fa-{% if success %}check-circle text-success{% else %}times-circle text-danger{% endif %}"></i>
+            Import {{ tcg }} - {{ season }}
+        </h1>
+        <p class="text-muted">
+            {% if test_mode %}
+                <span class="badge bg-warning">TEST MODE</span> Nessun dato scritto
+            {% else %}
+                Dati importati nel Google Sheet
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<!-- Status Alert -->
+<div class="alert alert-{% if success %}success{% else %}danger{% endif %} mb-4">
+    <h5>
+        {% if success %}
+            ✅ Import completato con successo!
+        {% else %}
+            ❌ Errore durante l'import
+        {% endif %}
+    </h5>
+    <p class="mb-0">
+        {% if test_mode and success %}
+            Il test mode ha avuto successo. Puoi procedere con l'import reale rimuovendo il flag test mode.
+        {% elif success %}
+            I dati sono stati scritti nel Google Sheet. Controlla le classifiche e i risultati.
+        {% else %}
+            Si è verificato un errore. Controlla l'output console qui sotto per i dettagli.
+        {% endif %}
+    </p>
+</div>
+
+<!-- Console Output -->
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-terminal"></i> Output Console</h5>
+    </div>
+    <div class="card-body p-0">
+        <pre class="mb-0 p-3" style="background-color: #1e1e1e; color: #d4d4d4; max-height: 600px; overflow-y: auto;"><code>{{ output }}</code></pre>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="text-center">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary btn-lg">
+        <i class="fas fa-arrow-left"></i> Torna alla Dashboard
+    </a>
+
+    {% if success and not test_mode %}
+    <a href="{{ url_for('classifica', season_id=season) }}" class="btn btn-success btn-lg">
+        <i class="fas fa-list-ol"></i> Vedi Classifica
+    </a>
+    {% endif %}
+</div>
+{% endblock %}

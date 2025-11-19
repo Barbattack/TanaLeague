@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ player.name }} - TanaLeague{% endblock %}
+{% block title %}{{ player.name|format_player_name(player.tcg, player.membership) }} - TanaLeague{% endblock %}
 
 {% block content %}
 <!-- Header -->
@@ -13,7 +13,7 @@
                         👤
                     </div>
                     <div>
-                        <h2 class="mb-1 text-dark">{{ player.name }}</h2>
+                        <h2 class="mb-1 text-dark">{{ player.name|format_player_name(player.tcg, player.membership) }}</h2>
                         <p class="mb-0 text-muted">Member since {{ player.first_seen }}</p>
                         <p class="mb-0"><small class="text-muted">ID: {{ player.membership }}</small></p>
                     </div>
@@ -129,6 +129,65 @@
     </div>
 </div>
 
+<!-- Achievements -->
+{% if player.achievements %}
+<div class="card mb-4">
+    <div class="card-header text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <h5 class="mb-0">
+            <i class="fas fa-trophy"></i> Achievement Sbloccati
+            <span class="badge bg-light text-dark float-end">{{ player.achievements|length }} / ?? • {{ player.achievement_points }} pt</span>
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% for ach in player.achievements %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100 shadow-sm
+                    {% if ach.rarity == 'Legendary' %}border-warning{% endif %}
+                    {% if ach.rarity == 'Epic' %}border-purple{% endif %}
+                    {% if ach.rarity == 'Rare' %}border-primary{% endif %}"
+                    {% if ach.rarity == 'Legendary' %}style="border-width: 3px; box-shadow: 0 0 15px rgba(255, 193, 7, 0.5);"{% endif %}>
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <div class="me-2" style="font-size: 2rem;">{{ ach.emoji }}</div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold
+                                    {% if ach.rarity == 'Legendary' %}text-warning{% endif %}
+                                    {% if ach.rarity == 'Epic' %}text-purple{% endif %}
+                                    {% if ach.rarity == 'Rare' %}text-primary{% endif %}">
+                                    {{ ach.name }}
+                                </h6>
+                                <p class="mb-1 small text-muted">{{ ach.description }}</p>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <span class="badge
+                                        {% if ach.rarity == 'Legendary' %}bg-warning text-dark{% endif %}
+                                        {% if ach.rarity == 'Epic' %}bg-purple{% endif %}
+                                        {% if ach.rarity == 'Rare' %}bg-primary{% endif %}
+                                        {% if ach.rarity == 'Uncommon' %}bg-success{% endif %}
+                                        {% if ach.rarity == 'Common' %}bg-secondary{% endif %}">
+                                        {{ ach.rarity }}
+                                    </span>
+                                    <small class="text-muted">{{ ach.points }} pt</small>
+                                </div>
+                                {% if ach.unlocked_date %}
+                                <small class="text-muted d-block mt-1">🗓️ {{ ach.unlocked_date }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-3">
+            <a href="{{ url_for('achievements') }}" class="btn btn-outline-primary">
+                <i class="fas fa-list"></i> Vedi tutti gli achievement disponibili
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Grafico -->
 <div class="card mb-4">
     <div class="card-header bg-secondary text-white">
@@ -158,9 +217,12 @@
                 </thead>
                 <tbody>
                     {% for t in player.history %}
+                    {% if t.season_status|upper != 'ARCHIVED' %}
                     <tr {% if t.rank <= 3 %}class="table-warning"{% elif t.rank <= 8 %}class="table-info"{% endif %}>
                         <td>{{ t.date }}</td>
-                        <td><span class="badge bg-secondary">{{ t.season }}</span></td>
+                        <td>
+                            <span class="badge bg-secondary">{{ t.season }}</span>
+                        </td>
                         <td class="text-center">
                             {% if t.rank == 1 %}<i class="fas fa-crown text-warning"></i>
                             {% elif t.rank == 2 %}<i class="fas fa-medal text-secondary"></i>
@@ -170,6 +232,7 @@
                         <td class="text-center"><strong>{{ t.points }}</strong></td>
                         <td class="text-center d-none d-md-table-cell">{{ t.record }}</td>
                     </tr>
+                    {% endif %}
                     {% endfor %}
                 </tbody>
             </table>
