@@ -371,6 +371,15 @@ def update_seasonal_standings(sheet, season_id: str, tournament_date: str):
     ws_standings = sheet.worksheet("Seasonal_Standings_PROV")
     ws_results = sheet.worksheet("Results")
     ws_tournaments = sheet.worksheet("Tournaments")
+    ws_config = sheet.worksheet("Config")
+
+    # Leggi status season dalla Config
+    config_data = ws_config.get_all_values()
+    season_status = None
+    for row in config_data[4:]:  # Skip header (righe 1-3)
+        if row and row[0] == season_id:  # Col 0 = Season_ID
+            season_status = row[4].strip().upper() if len(row) > 4 else ""  # Col 4 = Status
+            break
 
     # Conta quanti tornei ci sono in questa stagione
     all_tournaments = ws_tournaments.get_all_values()
@@ -379,9 +388,13 @@ def update_seasonal_standings(sheet, season_id: str, tournament_date: str):
 
     print(f"\n   🔄 Aggiornamento classifica stagionale {season_id}...")
     print(f"      Tornei stagione: {total_tournaments}")
+    print(f"      Status stagione: {season_status}")
 
     # Calcola quanti tornei contare
-    if total_tournaments < 8:
+    if season_status == "ARCHIVED":
+        max_to_count = total_tournaments
+        print(f"      Scarto: NESSUNO (stagione ARCHIVED - archivio dati)")
+    elif total_tournaments < 8:
         max_to_count = total_tournaments
         print(f"      Scarto: NESSUNO (stagione < 8 tornei)")
     else:
