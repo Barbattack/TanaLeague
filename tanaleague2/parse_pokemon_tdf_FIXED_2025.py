@@ -204,44 +204,20 @@ def parse_tdf(filepath, season_id):
         opp_total = sum(records[opp]['w'] + records[opp]['l'] + records[opp]['t'] for opp in opps)
         omw_pct[uid] = (opp_wins / opp_total * 100) if opp_total > 0 else 0.0
 
-    # Calculate TanaLeague ranking based on win_points + OMW% (for tiebreaks)
-    # This is different from Pokemon official ranking which may use different tiebreakers
-    tanaleague_ranking = []
-    for uid in players.keys():
-        if uid not in standings:
-            continue
-        w, l, t = records[uid]['w'], records[uid]['l'], records[uid]['t']
-        win_points = w * 3 + t * 1
-        tanaleague_ranking.append({
-            'uid': uid,
-            'win_points': win_points,
-            'omw_pct': omw_pct[uid],
-            'official_rank': standings[uid]
-        })
-
-    # Sort by win_points DESC, then OMW% DESC
-    tanaleague_ranking.sort(key=lambda x: (-x['win_points'], -x['omw_pct']))
-
-    # Assign TanaLeague rank
-    tanaleague_rank_map = {}
-    for i, player in enumerate(tanaleague_ranking, 1):
-        tanaleague_rank_map[player['uid']] = i
-
     # Calculate points (Pokemon system: W=3, T=1, L=0)
     results_data = []
     for uid in players.keys():
         if uid not in standings:
             continue
 
-        official_rank = standings[uid]  # Rank ufficiale Pokemon (per info)
-        tanaleague_rank = tanaleague_rank_map[uid]  # Rank TanaLeague (per punti)
+        rank = standings[uid]  # Ranking ufficiale Pokemon (già ordina per win_points + OMW%)
         w, l, t = records[uid]['w'], records[uid]['l'], records[uid]['t']
         win_points = w * 3 + t * 1
 
         # Points formula
         n_participants = len(standings)
-        points_victory = w  # Numero di vittorie (NON win_points!)
-        points_ranking = n_participants - (tanaleague_rank - 1)  # Usa TanaLeague rank
+        points_victory = w  # Numero di vittorie
+        points_ranking = n_participants - (rank - 1)
         points_total = points_victory + points_ranking
 
         result_id = f"{tid}_{uid.zfill(10)}"
@@ -249,7 +225,7 @@ def parse_tdf(filepath, season_id):
             result_id,
             tid,
             uid.zfill(10),
-            official_rank,  # Rank ufficiale Pokemon (colonna Ranking)
+            rank,
             win_points,
             round(omw_pct[uid], 2),
             points_victory,      # No decimals - già intero
