@@ -850,6 +850,68 @@ def player(membership):
         chart_labels = [h['date'] for h in history[::-1]]
         chart_data = [h['points'] for h in history[::-1]]
 
+        # ====================================================================
+        # NUOVI CALCOLI PER GRAFICI STATISTICHE AVANZATE
+        # ====================================================================
+
+        # 1. Match Record (W-T-L totali lifetime)
+        total_match_w = 0
+        total_match_t = 0
+        total_match_l = 0
+        has_match_data = False
+
+        for r in player_results:
+            if len(r) >= 13 and r[10] and r[11] and r[12]:
+                total_match_w += int(r[10])
+                total_match_t += int(r[11])
+                total_match_l += int(r[12])
+                has_match_data = True
+
+        match_record = {
+            'wins': total_match_w,
+            'ties': total_match_t,
+            'losses': total_match_l,
+            'has_data': has_match_data
+        }
+
+        # 2. Ranking Distribution (quante volte in ogni fascia)
+        rank_1st = sum(1 for r in player_results if r[3] and int(r[3]) == 1)
+        rank_2nd = sum(1 for r in player_results if r[3] and int(r[3]) == 2)
+        rank_3rd = sum(1 for r in player_results if r[3] and int(r[3]) == 3)
+        rank_top8 = sum(1 for r in player_results if r[3] and 4 <= int(r[3]) <= 8)
+        rank_other = sum(1 for r in player_results if r[3] and int(r[3]) > 8)
+
+        ranking_dist = {
+            'first': rank_1st,
+            'second': rank_2nd,
+            'third': rank_3rd,
+            'top8': rank_top8,
+            'other': rank_other
+        }
+
+        # 3. Radar Data (5 metriche normalizzate 0-100)
+        # Victory Rate: % tornei vinti
+        victory_rate = (tournament_wins / tournaments_played * 100) if tournaments_played > 0 else 0
+
+        # Avg Performance: punti medi normalizzati (max 25 = 100%)
+        avg_performance = min(100, (avg_points / 25 * 100)) if avg_points > 0 else 0
+
+        # Consistency: stabilità basata su deviazione standard (max dev 10 = 0%)
+        if len(points) > 1:
+            import statistics
+            std_dev = statistics.stdev(points)
+            consistency = max(0, (1 - std_dev / 10) * 100)
+        else:
+            consistency = 100  # Se ha giocato 1 solo torneo, è "perfettamente consistente"
+
+        radar_data = {
+            'win_rate': round(win_rate, 1),
+            'top8_rate': round(top8_rate, 1),
+            'victory_rate': round(victory_rate, 1),
+            'avg_performance': round(avg_performance, 1),
+            'consistency': round(consistency, 1)
+        }
+
         # Achievement data
         achievements_unlocked = []
         achievement_points = 0
@@ -905,7 +967,11 @@ def player(membership):
             'chart_labels': chart_labels,
             'chart_data': chart_data,
             'achievements': achievements_unlocked,
-            'achievement_points': achievement_points
+            'achievement_points': achievement_points,
+            # Nuovi dati per grafici statistiche avanzate
+            'match_record': match_record,
+            'ranking_dist': ranking_dist,
+            'radar_data': radar_data
         }
         
         return render_template('player.html', player=player_data)

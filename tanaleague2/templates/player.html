@@ -129,6 +129,88 @@
     </div>
 </div>
 
+<!-- Analisi Performance - Grafici Statistiche -->
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-chart-pie"></i> Analisi Performance
+            <small class="float-end" style="cursor: help;" data-bs-toggle="tooltip"
+                   title="Grafici dettagliati delle tue statistiche: match record, distribuzione ranking e performance overview">ℹ️</small>
+        </h5>
+    </div>
+    <div class="card-body">
+        <!-- Row 1: Match Record + Ranking Distribution -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3">
+                <h6 class="text-center mb-3">
+                    Match Record Lifetime
+                    <i class="fas fa-info-circle text-muted"
+                       style="cursor: help;"
+                       data-bs-toggle="tooltip"
+                       title="Distribuzione di tutte le partite giocate nei tornei. Verde = Vittorie, Giallo = Pareggi, Rosso = Sconfitte. Mostra la tua performance complessiva nelle singole partite.">
+                    </i>
+                </h6>
+                {% if player.match_record.has_data %}
+                <canvas id="matchRecordChart" height="200"></canvas>
+                <div class="text-center mt-2">
+                    <small class="text-muted">
+                        <span class="badge bg-success">{{ player.match_record.wins }}W</span>
+                        {% if player.match_record.ties > 0 %}
+                        <span class="badge bg-warning text-dark">{{ player.match_record.ties }}T</span>
+                        {% endif %}
+                        <span class="badge bg-danger">{{ player.match_record.losses }}L</span>
+                    </small>
+                </div>
+                {% else %}
+                <div class="alert alert-warning text-center">
+                    <i class="fas fa-exclamation-triangle"></i> Dati match non disponibili per i tornei importati
+                </div>
+                {% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
+                <h6 class="text-center mb-3">
+                    Distribuzione Ranking
+                    <i class="fas fa-info-circle text-muted"
+                       style="cursor: help;"
+                       data-bs-toggle="tooltip"
+                       title="Quante volte sei arrivato in ogni fascia di classifica. Più barre alte a sinistra = performance migliori! 🥇 = 1° posto, 🥈 = 2°, 🥉 = 3°.">
+                    </i>
+                </h6>
+                <canvas id="rankingDistChart" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- Row 2: Performance Radar -->
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <h6 class="text-center mb-3">
+                    Performance Overview
+                    <i class="fas fa-info-circle text-muted"
+                       style="cursor: help;"
+                       data-bs-toggle="tooltip"
+                       title="Vista a 360° delle tue performance su 5 metriche chiave. Più l'area del pentagono è piena, migliore è la tua performance complessiva. Passa il mouse sugli assi per dettagli.">
+                    </i>
+                </h6>
+                <canvas id="performanceRadar" height="250"></canvas>
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle" style="cursor: help;" data-bs-toggle="tooltip"
+                           title="Win Rate: % partite vinte sul totale. Basato su circa 4 round per torneo."></i> <strong>Win Rate</strong> •
+                        <i class="fas fa-info-circle" style="cursor: help;" data-bs-toggle="tooltip"
+                           title="Top8 Rate: % tornei in cui hai raggiunto le prime 8 posizioni."></i> <strong>Top8 Rate</strong> •
+                        <i class="fas fa-info-circle" style="cursor: help;" data-bs-toggle="tooltip"
+                           title="Victory Rate: % tornei vinti (1° posto) sul totale giocato."></i> <strong>Victory Rate</strong> •
+                        <i class="fas fa-info-circle" style="cursor: help;" data-bs-toggle="tooltip"
+                           title="Avg Performance: Punti medi normalizzati. 100% = 25 punti medi (performance eccellente)."></i> <strong>Avg Perf</strong> •
+                        <i class="fas fa-info-circle" style="cursor: help;" data-bs-toggle="tooltip"
+                           title="Consistency: Stabilità delle tue performance. 100% = risultati sempre simili, 0% = molto altalenante. Basato su deviazione standard."></i> <strong>Consistency</strong>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Achievements -->
 {% if player.achievements %}
 <div class="card mb-4">
@@ -279,6 +361,165 @@ new Chart(ctx, {
         },
         scales: {
             y: { beginAtZero: true }
+        }
+    }
+});
+
+// ====================================================================
+// NUOVI GRAFICI - ANALISI PERFORMANCE
+// ====================================================================
+
+{% if player.match_record.has_data %}
+// 1. Match Record Chart (Doughnut)
+const matchRecordCtx = document.getElementById('matchRecordChart');
+const matchRecordData = {
+    labels: {% if player.match_record.ties > 0 %}['Vittorie', 'Pareggi', 'Sconfitte']{% else %}['Vittorie', 'Sconfitte']{% endif %},
+    datasets: [{
+        data: {% if player.match_record.ties > 0 %}[{{ player.match_record.wins }}, {{ player.match_record.ties }}, {{ player.match_record.losses }}]{% else %}[{{ player.match_record.wins }}, {{ player.match_record.losses }}]{% endif %},
+        backgroundColor: {% if player.match_record.ties > 0 %}['#22c55e', '#fbbf24', '#ef4444']{% else %}['#22c55e', '#ef4444']{% endif %},
+        borderWidth: 2,
+        borderColor: '#fff'
+    }]
+};
+
+new Chart(matchRecordCtx, {
+    type: 'doughnut',
+    data: matchRecordData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 15,
+                    font: { size: 12 }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.parsed || 0;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return `${label}: ${value} (${percentage}%)`;
+                    }
+                }
+            }
+        }
+    }
+});
+{% endif %}
+
+// 2. Ranking Distribution Chart (Bar)
+const rankingDistCtx = document.getElementById('rankingDistChart');
+const rankingDistData = {
+    labels: ['🥇 1°', '🥈 2°', '🥉 3°', 'Top 4-8', 'Oltre 8°'],
+    datasets: [{
+        label: 'Tornei',
+        data: [
+            {{ player.ranking_dist.first }},
+            {{ player.ranking_dist.second }},
+            {{ player.ranking_dist.third }},
+            {{ player.ranking_dist.top8 }},
+            {{ player.ranking_dist.other }}
+        ],
+        backgroundColor: [
+            '#ffd700',  // Oro
+            '#c0c0c0',  // Argento
+            '#cd7f32',  // Bronzo
+            '#3b82f6',  // Blu
+            '#9ca3af'   // Grigio
+        ],
+        borderWidth: 1,
+        borderColor: '#fff'
+    }]
+};
+
+new Chart(rankingDistCtx, {
+    type: 'bar',
+    data: rankingDistData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return `Tornei: ${context.parsed.y}`;
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1,
+                    precision: 0
+                }
+            }
+        }
+    }
+});
+
+// 3. Performance Radar Chart
+const performanceRadarCtx = document.getElementById('performanceRadar');
+const radarData = {
+    labels: ['Win Rate', 'Top8 Rate', 'Victory Rate', 'Avg Perf', 'Consistency'],
+    datasets: [{
+        label: 'Performance %',
+        data: [
+            {{ player.radar_data.win_rate }},
+            {{ player.radar_data.top8_rate }},
+            {{ player.radar_data.victory_rate }},
+            {{ player.radar_data.avg_performance }},
+            {{ player.radar_data.consistency }}
+        ],
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        borderColor: 'rgb(75, 192, 192)',
+        borderWidth: 2,
+        pointBackgroundColor: 'rgb(75, 192, 192)',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgb(75, 192, 192)',
+        pointRadius: 4,
+        pointHoverRadius: 6
+    }]
+};
+
+new Chart(performanceRadarCtx, {
+    type: 'radar',
+    data: radarData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return `${context.parsed.r.toFixed(1)}%`;
+                    }
+                }
+            }
+        },
+        scales: {
+            r: {
+                min: 0,
+                max: 100,
+                ticks: {
+                    stepSize: 20,
+                    callback: function(value) {
+                        return value + '%';
+                    }
+                },
+                pointLabels: {
+                    font: { size: 11 }
+                }
+            }
         }
     }
 });
