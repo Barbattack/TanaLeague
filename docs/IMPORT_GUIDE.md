@@ -145,6 +145,36 @@ python parse_pokemon_tdf.py --tdf path/to/tournament.tdf --season PKM-FS25
 6. ✅ Aggiorna Seasonal_Standings_PROV
 7. ✅ Check e sblocca achievement automaticamente
 
+### Come Funziona il Sistema Punti Pokémon
+
+**BYE = Vittoria Automatica:**
+- Nel Pokémon TCG, un BYE vale 3 punti (vittoria automatica)
+- Il parser conta automaticamente i BYE come vittorie nel record W-T-L
+- I BYE sono identificati nel TDF con `outcome="5"`
+
+**Formula Punti TanaLeague:**
+```
+Points_Victory = W (numero di vittorie, NON win_points)
+Points_Ranking = N_partecipanti - (rank - 1)
+Points_Total = Points_Victory + Points_Ranking
+```
+
+**Ranking:**
+- Il TDF fornisce già il ranking ufficiale Pokémon corretto
+- Ordine: win_points DESC (W×3 + T×1), poi OMW% DESC per tiebreak
+- TanaLeague usa direttamente questo ranking dal TDF
+
+**Esempio Pratico:**
+Giocatore con 3W-0T-1L in torneo da 11 giocatori, classificato 1°:
+- `win_points` = 3×3 + 0×1 = **9 punti** (ranking ufficiale Pokémon)
+- `Points_Victory` = **3** (numero vittorie)
+- `Points_Ranking` = 11 - (1-1) = **11**
+- `Points_Total` = 3 + 11 = **14 punti TanaLeague**
+
+**Nota Importante:**
+- `win_points` (W×3 + T×1) è usato SOLO per il ranking ufficiale Pokémon
+- `Points_Victory` per TanaLeague è il numero di vittorie W, NON win_points
+
 ### Output Esempio
 
 ```
@@ -394,6 +424,43 @@ Questo crea i fogli necessari.
 **Verifica**:
 - Il nickname deve essere tra parentesi: `(Hotel Motel)`
 - Lo script sostituisce `\n` con spazi automaticamente
+
+### Errore: "Colonne Match_W/T/L vuote o decimali in Points" (Pokémon)
+
+**Causa**: File parser vecchio o non aggiornato con bug nel calcolo punti
+
+**Sintomi**:
+- Valori decimali in Points_Victory/Total (es. 14,33 invece di 14)
+- Colonne Match_W, Match_T, Match_L vuote nella sheet Results
+- Colonne Players shiftate o con valori 0
+
+**Soluzione**:
+1. Scarica l'ultima versione del parser:
+   ```bash
+   cd tanaleague2
+   # Verifica che il file abbia questi fix:
+   grep "points_victory = w" parse_pokemon_tdf.py
+   # Deve mostrare: points_victory = w  # Numero di vittorie
+   ```
+
+2. Verifica che il codice includa:
+   - **BYE counting**: `if outcome == '5': records[bye_player]['w'] += 1`
+   - **Points formula**: `points_victory = w` (NON `win_points / 3` o `win_points`)
+   - **Results append**: 13 colonne con `w, t, l` alla fine
+
+3. Cancella vecchi dati della stagione:
+   - Elimina righe dalla sheet Results per quella season
+   - Elimina riga dalla sheet Tournaments
+
+4. Re-import torneo:
+   ```bash
+   python parse_pokemon_tdf.py --tdf file.tdf --season PKM-FS25
+   ```
+
+**Verifica Fix**:
+- Points_Victory = numero di vittorie (es. 3W → 3 punti, NO decimali)
+- Match_W/T/L popolate correttamente in Results
+- Players sheet con colonne: Membership, Name, **TCG**, First_Seen, Last_Seen, Total_Tournaments, Tournament_Wins, Match_W, **Match_T**, **Match_L**, Total_Points
 
 ---
 
