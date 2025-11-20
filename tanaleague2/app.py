@@ -688,18 +688,18 @@ def players_list():
     """
     Lista tutti i giocatori registrati.
 
-    Mostra tabella ordinata per punti totali lifetime con:
+    Mostra card per ogni giocatore ordinata per punti medi con:
     - Membership number
     - Nome (formattato per TCG con filtro format_player_name)
     - TCG principale
     - Numero tornei giocati
-    - Numero vittorie
-    - Punti totali lifetime
+    - Numero vittorie tornei
+    - Punti medi per torneo
 
-    Ogni riga linka al profilo dettagliato /player/<membership>.
+    Ogni card linka al profilo dettagliato /player/<membership>.
 
     Returns:
-        Template: players.html con lista giocatori ordinata per punti DESC
+        Template: players.html con lista giocatori ordinata per punti medi DESC
     """
     from cache import cache
     try:
@@ -710,16 +710,22 @@ def players_list():
         players = []
         for row in all_players:
             if row and row[0]:
+                # Colonne Players: A=Membership, B=Name, C=TCG, D=First_Seen, E=Last_Seen
+                # F=Total_Tournaments, G=Tournament_Wins, H=Match_W, I=Match_T, J=Match_L, K=Total_Points
+                total_tournaments = safe_int(row[5] if len(row) > 5 else None, 0)
+                total_points = safe_float(row[10] if len(row) > 10 else None, 0.0)
+                avg_points = round(total_points / total_tournaments, 1) if total_tournaments > 0 else 0.0
+
                 players.append({
                     'membership': row[0],
                     'name': row[1],
                     'tcg': row[2] if len(row) > 2 else 'OP',
-                    'tournaments': safe_int(row[4] if len(row) > 4 else None, 0),
-                    'wins': safe_int(row[5] if len(row) > 5 else None, 0),
-                    'points': safe_float(row[7] if len(row) > 7 else None, 0.0)
+                    'tournaments': total_tournaments,
+                    'wins': safe_int(row[6] if len(row) > 6 else None, 0),
+                    'points': avg_points  # Punti medi per torneo
                 })
-        
-        # Ordina per punti totali DESC
+
+        # Ordina per punti medi DESC
         players.sort(key=lambda x: x['points'], reverse=True)
         
         return render_template('players.html', players=players)
