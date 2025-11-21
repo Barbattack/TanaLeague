@@ -248,8 +248,8 @@ def parse_csv_rounds(csv_files: List[str], season_id: str, tournament_date: str)
         rank = r['rank']
         win_points = r['w'] * 3 + r['d'] * 1
 
-        # Formula TanaLeague
-        points_victory = win_points  # win_points è già corretto (W*3 + D*1)
+        # Formula TanaLeague (uguale a Pokemon e One Piece)
+        points_victory = r['w']  # Numero di vittorie (NON win_points!)
         points_ranking = n_participants - (rank - 1)
         points_total = points_victory + points_ranking
 
