@@ -1316,7 +1316,7 @@ def admin_import_pokemon():
 @app.route('/admin/import/riftbound', methods=['POST'])
 @admin_required
 def admin_import_riftbound():
-    """Gestisce import Riftbound da PDF."""
+    """Gestisce import Riftbound da CSV Multi-Round."""
     import subprocess
     import tempfile
 
@@ -1338,17 +1338,17 @@ def admin_import_riftbound():
             return redirect(url_for('admin_dashboard'))
 
         # Verifica estensione
-        if not file.filename.endswith('.pdf'):
-            flash('File deve essere PDF', 'danger')
+        if not file.filename.endswith('.csv'):
+            flash('File deve essere CSV', 'danger')
             return redirect(url_for('admin_dashboard'))
 
         # Salva file temporaneo
-        with tempfile.NamedTemporaryFile(mode='wb', suffix='.pdf', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(mode='wb', suffix='.csv', delete=False) as tmp:
             file.save(tmp.name)
             tmp_path = tmp.name
 
         # Esegui import script
-        cmd = ['python3', 'import_riftbound.py', '--pdf', tmp_path, '--season', season_id]
+        cmd = ['python3', 'import_riftbound.py', '--csv', tmp_path, '--season', season_id]
         if test_mode:
             cmd.append('--test')
 

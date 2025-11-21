@@ -8,7 +8,7 @@ Guida completa per importare tornei da CSV, PDF e TDF nei 3 TCG supportati.
 
 - [One Piece (CSV)](#-one-piece-tcg-csv)
 - [Pokémon (TDF/XML)](#-pokémon-tcg-tdfxml)
-- [Riftbound (PDF)](#-riftbound-tcg-pdf)
+- [Riftbound (CSV Multi-Round)](#-riftbound-tcg-csv-multi-round)
 - [Test Mode](#-test-mode-dry-run)
 - [Troubleshooting](#-troubleshooting)
 
@@ -442,13 +442,14 @@ python setup_achievements.py
 
 Questo crea i fogli necessari.
 
-### Nickname con spazi non rilevati (Riftbound)
+### Nome giocatore non rilevato (Riftbound)
 
-**Causa**: Multilinea nel PDF - il parser attuale gestisce questo caso!
+**Causa**: User ID (colonna 4 o 8) mancante o vuoto nel CSV
 
 **Verifica**:
-- Il nickname deve essere tra parentesi: `(Hotel Motel)`
-- Lo script sostituisce `\n` con spazi automaticamente
+- Controlla che le colonne User ID siano popolate
+- Il nome viene composto da First Name + Last Name (colonne 5-6 o 9-10)
+- L'User ID diventa il Membership Number nel sistema
 
 ### Errore: "Colonne Match_W/T/L vuote o decimali in Points" (Pokémon)
 
@@ -491,14 +492,14 @@ Questo crea i fogli necessari.
 
 ## 📊 Confronto Import
 
-| Feature | One Piece (CSV) | Pokémon (TDF) | Riftbound (PDF) |
+| Feature | One Piece (CSV) | Pokémon (TDF) | Riftbound (CSV) |
 |---------|----------------|---------------|-----------------|
-| **Formato** | CSV | XML/TDF | PDF |
-| **Sorgente** | Limitlesstcg | Play! Pokémon | Software gestione |
-| **Match H2H** | ❌ No | ✅ Sì | ❌ No |
+| **Formato** | CSV | XML/TDF | CSV Multi-Round |
+| **Sorgente** | Limitlesstcg | Play! Pokémon | Software gestione tornei |
+| **Match H2H** | ❌ No | ✅ Sì | ✅ Sì (Riftbound_Matches) |
 | **Pareggi** | ❌ No (W/L) | ✅ Sì (W/D/L) | ✅ Sì (W/D/L) |
 | **Buoni Negozio** | ✅ Sì | ❌ No | ❌ No |
-| **Display Nome** | Full Name | Nome I. | Nickname |
+| **Display Nome** | Full Name | Nome I. | First + Last Name |
 | **Test Mode** | ✅ Sì | ✅ Sì | ✅ Sì |
 | **Achievement** | ✅ Auto | ✅ Auto | ✅ Auto |
 | **Standings** | ✅ Auto | ✅ Auto | ✅ Auto |
