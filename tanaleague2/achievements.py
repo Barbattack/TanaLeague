@@ -120,6 +120,9 @@ def calculate_player_stats(sheet, membership: str, tcg: str = None) -> Dict:
     """
     Calcola statistiche complete di un giocatore dai fogli Results.
 
+    IMPORTANTE: Esclude automaticamente i risultati delle stagioni ARCHIVED
+    per evitare che influenzino gli achievement.
+
     Args:
         sheet: Google Sheet connesso
         membership: Membership number del giocatore
@@ -128,11 +131,29 @@ def calculate_player_stats(sheet, membership: str, tcg: str = None) -> Dict:
     Returns:
         Dict con tutte le stats necessarie per check achievement
     """
+    # 1. Carica lista stagioni ARCHIVED da Config
+    ws_config = sheet.worksheet("Config")
+    config_data = ws_config.get_all_values()[4:]  # Skip header (righe 1-4)
+
+    archived_seasons = set()
+    for row in config_data:
+        if row and len(row) > 4:
+            season_id = row[0]  # Col 0 = Season_ID
+            status = row[4].strip().upper() if row[4] else ""  # Col 4 = Status
+            if status == "ARCHIVED":
+                archived_seasons.add(season_id)
+
+    # 2. Carica risultati
     ws_results = sheet.worksheet("Results")
     all_results = ws_results.get_all_values()[3:]  # Skip header
 
-    # Filtra risultati del giocatore
-    player_results = [r for r in all_results if r and len(r) >= 10 and r[2] == membership]
+    # 3. Filtra risultati del giocatore ESCLUDENDO stagioni ARCHIVED
+    player_results = []
+    for r in all_results:
+        if r and len(r) >= 10 and r[2] == membership:
+            season_id = r[0]  # Col 0 = Season_ID
+            if season_id not in archived_seasons:
+                player_results.append(r)
 
     if tcg:
         # Filtra per TCG
