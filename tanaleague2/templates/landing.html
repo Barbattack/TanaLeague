@@ -4,19 +4,98 @@
 
 {% block content %}
 <!-- HERO -->
-<div class="text-center py-5 mb-5">
+<div class="text-center py-5 mb-4">
   <img src="{{ url_for('static', filename='logo.png') }}" alt="La Tana delle Pulci" style="max-width: 200px;" class="mb-3">
   <h1 class="display-4 fw-bold mb-2">TanaLeague</h1>
-  <p class="lead text-muted mb-4">Le leghe de La Tana delle Pulci</p>
-  
-  <!-- CTA Schede Giocatori -->
-  <div class="mb-4">
-    <a href="{{ url_for('players_list') }}" class="btn btn-primary btn-lg">
-      <i class="fas fa-users"></i> Guarda le Schede Giocatore
-    </a>
+  <p class="lead text-muted mb-2">Le leghe de La Tana delle Pulci</p>
+  <p class="text-muted">Il tuo punto di riferimento per classifiche e statistiche TCG</p>
+</div>
+
+<!-- COS'È TANALEAGUE -->
+<div class="text-center mb-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <h2 class="h4 mb-3">Benvenuto su TanaLeague!</h2>
+      <p class="lead text-muted">
+        TanaLeague è il sistema di classifiche ufficiale de La Tana delle Pulci.
+        Tracciamo i risultati dei tornei Pokémon, OnePiece e Riftbound,
+        calcoliamo i punteggi e premiamo i migliori giocatori della community!
+      </p>
+    </div>
   </div>
-  
-  <!-- CTA TCG Cards -->
+</div>
+
+<!-- COME FUNZIONA -->
+<div class="mb-5">
+  <h2 class="text-center h5 text-muted mb-4">Come Funziona</h2>
+  <div class="row g-4 justify-content-center">
+    <div class="col-md-4 col-lg-3">
+      <div class="text-center">
+        <div class="fs-1 mb-2">🎮</div>
+        <h5 class="fw-bold">1. Partecipa</h5>
+        <p class="text-muted small">Gioca ai tornei in negozio</p>
+      </div>
+    </div>
+    <div class="col-md-4 col-lg-3">
+      <div class="text-center">
+        <div class="fs-1 mb-2">⭐</div>
+        <h5 class="fw-bold">2. Accumula</h5>
+        <p class="text-muted small">Guadagna punti in base ai risultati</p>
+      </div>
+    </div>
+    <div class="col-md-4 col-lg-3">
+      <div class="text-center">
+        <div class="fs-1 mb-2">🏆</div>
+        <h5 class="fw-bold">3. Scala</h5>
+        <p class="text-muted small">Sali in classifica e conquista il podio</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COSA VUOI FARE? -->
+<div class="mb-5">
+  <h2 class="text-center h5 text-muted mb-4">Cosa Vuoi Fare?</h2>
+  <div class="row g-3 justify-content-center">
+    <div class="col-md-4">
+      <a href="{{ url_for('players_list') }}" class="text-decoration-none">
+        <div class="card h-100 border-primary">
+          <div class="card-body text-center py-4">
+            <div class="fs-1 mb-2">🔍</div>
+            <h5 class="card-title text-primary">Cerca un Giocatore</h5>
+            <p class="text-muted small mb-0">Trova la scheda di un giocatore e scopri le sue statistiche</p>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a href="{{ url_for('classifiche_page') }}" class="text-decoration-none">
+        <div class="card h-100 border-success">
+          <div class="card-body text-center py-4">
+            <div class="fs-1 mb-2">📊</div>
+            <h5 class="card-title text-success">Vedi le Classifiche</h5>
+            <p class="text-muted small mb-0">Consulta le classifiche di tutte le stagioni e tutti i TCG</p>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a href="{{ url_for('stats', scope=stats_season_id) }}" class="text-decoration-none">
+        <div class="card h-100 border-info">
+          <div class="card-body text-center py-4">
+            <div class="fs-1 mb-2">📈</div>
+            <h5 class="card-title text-info">Esplora Statistiche</h5>
+            <p class="text-muted small mb-0">Scopri record, trend e curiosità sulla community</p>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- TCG CARDS -->
+<div class="mb-5">
+  <h2 class="text-center h5 text-muted mb-4">Scegli il Tuo TCG</h2>
   <div class="row g-3 justify-content-center">
     <div class="col-md-4 col-lg-3">
       <a href="{{ url_for('classifica', season_id=stats_season_id) }}" class="text-decoration-none">
@@ -165,28 +244,6 @@
   </div>
 </div>
 
-<!-- PODIO PLACEHOLDER ALTRI TCG -->
-<div class="row g-4 mb-5">
-  <div class="col-md-6">
-    <div class="card border-warning">
-      <div class="card-body text-center">
-        <h4 class="mb-3">🏆 Podio Pokémon</h4>
-        <p class="text-muted mb-3">⚡ In arrivo...</p>
-        <small class="text-muted">Seguici per gli aggiornamenti!</small>
-      </div>
-    </div>
-  </div>
-  
-  <div class="col-md-6">
-    <div class="card border-info">
-      <div class="card-body text-center">
-        <h4 class="mb-3">🏆 Podio Riftbound</h4>
-        <p class="text-muted mb-3">🌌 In arrivo...</p>
-        <small class="text-muted">Seguici per gli aggiornamenti!</small>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- HIGHLIGHTS -->
 {% if stats and stats.spot_narrative %}
