@@ -3,7 +3,7 @@
 ## SETUP (una volta sola)
 
 1. Upload script su PythonAnywhere:
-   - Files → Upload `parse_pokemon_tdf.py`
+   - Files → Upload `import_pokemon.py`
 
 2. Modifica config (righe 13-14):
    ```python
@@ -22,12 +22,12 @@
 
 ### TEST (consigliato prima volta):
 ```bash
-python parse_pokemon_tdf.py --tdf 12novembre.tdf --season PKM-FS25 --test
+python import_pokemon.py --tdf 12novembre.tdf --season PKM-FS25 --test
 ```
 
 ### IMPORT REALE:
 ```bash
-python parse_pokemon_tdf.py --tdf 12novembre.tdf --season PKM-FS25
+python import_pokemon.py --tdf 12novembre.tdf --season PKM-FS25
 ```
 
 ## NOMENCLATURA STAGIONI

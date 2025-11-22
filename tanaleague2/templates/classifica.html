@@ -24,13 +24,15 @@
             </button>
             <ul class="dropdown-menu">
                 {% for s in all_seasons %}
+                {% if s.status|upper != 'ARCHIVED' %}
                 <li>
-                    <a class="dropdown-item {% if s.id == season.id %}active{% endif %}" 
+                    <a class="dropdown-item {% if s.id == season.id %}active{% endif %}"
                        href="{{ url_for('classifica', season_id=s.id) }}">
                         {{ s.name }}
-                        {% if s.status == 'ACTIVE' %}<span class="badge bg-success">Attiva</span>{% endif %}
+                        {% if s.status|upper == 'ACTIVE' %}<span class="badge bg-success">Attiva</span>{% endif %}
                     </a>
                 </li>
+                {% endif %}
                 {% endfor %}
             </ul>
         </div>
@@ -136,7 +138,7 @@
                         </td>
                         <td>
                             <a href="{{ url_for('player', membership=player.membership) }}" class="text-decoration-none">
-                                <strong>{{ player.name }}</strong>
+                                <strong>{{ player.name|format_player_name(season.tcg, player.membership) }}</strong>
                             </a>
                         </td>
                         <td class="text-center"><strong>{{ player.points|int }}</strong></td>

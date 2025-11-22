@@ -25,12 +25,20 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('stats', scope=default_stats_scope) }}">Stats</a></li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="/">Classifiche</a>
+                        <a class="nav-link" href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('players_list') }}">Schede Giocatori</a>
+                        <a class="nav-link" href="{{ url_for('classifiche_page') }}"><i class="fas fa-ranking-star"></i> Classifiche</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('players_list') }}"><i class="fas fa-users"></i> Schede Giocatori</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('achievements') }}"><i class="fas fa-trophy"></i> Achievement</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('stats', scope=default_stats_scope) }}"><i class="fas fa-chart-line"></i> Stats</a>
                     </li>
                 </ul>
             </div>

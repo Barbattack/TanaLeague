@@ -15,7 +15,7 @@
       </a>
       <div class="dropdown">
         <button class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
-          Cambia Scope
+          Cambia Stagione
         </button>
         <ul class="dropdown-menu dropdown-menu-end">
           {% for s in available_scopes %}
@@ -315,15 +315,15 @@
       <div class="card h-100">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
-            <span class="fs-1">⚔️</span>
-            <span data-bs-toggle="tooltip" title="Torneo con più competizione in top8" style="cursor: help;">ℹ️</span>
+            <span class="fs-1">⚡</span>
+            <span data-bs-toggle="tooltip" title="Finale epica" style="cursor: help;">ℹ️</span>
           </div>
-          <h5 class="card-title">Torneo Competitivo</h5>
-          <p class="text-muted small mb-3">Maggior equilibrio in top8</p>
-          {% if stats.tales.torneo_competitivo %}
-            {% set t = stats.tales.torneo_competitivo %}
-            <div class="fw-bold">{{ t.participants }} giocatori</div>
-            <span class="badge bg-primary">{{ t.balanced_top8 }}/8 bilanciati</span>
+          <h5 class="card-title">Match dell'Anno</h5>
+          <p class="text-muted small mb-3">Finale tra top player</p>
+          {% if stats.tales.match_anno %}
+            {% set m = stats.tales.match_anno %}
+            <div class="fw-bold">{{ m.a.name }} vs {{ m.b.name }}</div>
+            <span class="badge bg-warning text-dark">{{ m.participants }} giocatori</span>
           {% else %}
             <div class="text-muted">N/A</div>
           {% endif %}

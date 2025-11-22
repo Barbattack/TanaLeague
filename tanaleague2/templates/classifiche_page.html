@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Classifiche - TanaLeague{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1><i class="fas fa-ranking-star"></i> Classifiche</h1>
+        <p class="text-muted">Seleziona una stagione per visualizzare la classifica</p>
+    </div>
+</div>
+
+<!-- One Piece -->
+<div class="card mb-4">
+    <div class="card-header bg-danger text-white">
+        <h4 class="mb-0">🏴‍☠️ One Piece TCG</h4>
+    </div>
+    <div class="card-body">
+        {% if op_seasons %}
+        <div class="row g-3">
+            {% for season in op_seasons %}
+            {% if season.status|upper != 'ARCHIVED' %}
+            <div class="col-md-6 col-lg-4">
+                <a href="{{ url_for('classifica', season_id=season.id) }}" class="text-decoration-none">
+                    <div class="card h-100 border-danger shadow-sm hover-lift">
+                        <div class="card-body">
+                            <h5 class="card-title text-danger">{{ season.name }}</h5>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge {% if season.status == 'ACTIVE' %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ season.status }}
+                                </span>
+                                <small class="text-muted">{{ season.id }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Nessuna stagione disponibile</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pokémon -->
+<div class="card mb-4">
+    <div class="card-header bg-warning text-dark">
+        <h4 class="mb-0">⚡ Pokémon TCG</h4>
+    </div>
+    <div class="card-body">
+        {% if pkm_seasons %}
+        <div class="row g-3">
+            {% for season in pkm_seasons %}
+            {% if season.status|upper != 'ARCHIVED' %}
+            <div class="col-md-6 col-lg-4">
+                <a href="{{ url_for('classifica', season_id=season.id) }}" class="text-decoration-none">
+                    <div class="card h-100 border-warning shadow-sm hover-lift">
+                        <div class="card-body">
+                            <h5 class="card-title text-warning">{{ season.name }}</h5>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge {% if season.status == 'ACTIVE' %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ season.status }}
+                                </span>
+                                <small class="text-muted">{{ season.id }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Nessuna stagione disponibile</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Riftbound -->
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h4 class="mb-0">🌌 Riftbound TCG</h4>
+    </div>
+    <div class="card-body">
+        {% if rfb_seasons %}
+        <div class="row g-3">
+            {% for season in rfb_seasons %}
+            {% if season.status|upper != 'ARCHIVED' %}
+            <div class="col-md-6 col-lg-4">
+                <a href="{{ url_for('classifica', season_id=season.id) }}" class="text-decoration-none">
+                    <div class="card h-100 border-info shadow-sm hover-lift">
+                        <div class="card-body">
+                            <h5 class="card-title text-info">{{ season.name }}</h5>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge {% if season.status == 'ACTIVE' %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ season.status }}
+                                </span>
+                                <small class="text-muted">{{ season.id }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Nessuna stagione disponibile</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.hover-lift {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.hover-lift:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+}
+</style>
+{% endblock %}

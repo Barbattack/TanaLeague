@@ -1,23 +1,66 @@
 #!/usr/bin/env python3
 """
-PULCI LEAGUE - Tournament Import Script
-========================================
+=================================================================================
+TanaLeague v2.0 - One Piece TCG Tournament Import
+=================================================================================
 
-Questo script importa i CSV dei tornei nel Google Sheet Pulci League.
+Script import tornei One Piece da CSV esportato dal portale Bandai ufficiale.
 
-COSA FA:
-1. Legge il CSV del torneo
-2. Calcola i punti (vittoria + ranking)
-3. Identifica X-0, X-1, Altri
-4. Calcola i buoni negozio
-5. Aggiorna tutte le classifiche
-6. Crea backup automatico
+FUNZIONALITÀ COMPLETE:
+1. Parsing CSV (Ranking, User Name, Membership, Win Points, OMW%, Record)
+2. Estrazione data torneo da nome file (YYYY_MM_DD, DD_MM_YYYY, etc.)
+3. Calcolo punti TanaLeague:
+   - Punti vittoria: Win Points * 3
+   - Punti ranking: (n_partecipanti - rank + 1)
+   - Punti totali: Vittoria + Ranking
+4. Identificazione categorie buoni:
+   - X-0: Vincitori senza sconfitte
+   - X-1: Giocatori con 1 sola sconfitta
+   - Altri: Resto dei partecipanti
+5. Calcolo distribuzione buoni negozio:
+   - Fondo totale: entry_fee * n_participants
+   - Costo buste: pack_cost * n_participants
+   - Distribuzione: 50% X-0, 30% X-1, 20% Altri
+6. Scrittura Google Sheets:
+   - Tournaments: Meta torneo
+   - Results: Risultati individuali giocatori
+   - Vouchers: Buoni negozio assegnati
+   - Players: Anagrafica giocatori (update)
+7. Aggiornamento Seasonal_Standings_PROV (live rankings)
+8. Achievement unlock automatico per tutti i partecipanti
+9. Backup automatico in Backup_Log (sovrascrittura safe)
 
 UTILIZZO:
-    python import_tournament.py --csv path/to/tournament.csv --season OP12
+    # Import normale
+    python import_onepiece.py --csv 2025_11_18_OP12.csv --season OP12
+
+    # Test mode (dry run, no write)
+    python import_onepiece.py --csv tournament.csv --season OP12 --test
+
+FORMATO CSV (portale Bandai):
+    Ranking,User Name,Membership Number,Win Points,OMW %,Record
+    1,Cogliati Pietro,12345,12,65.5,4-0
+    2,Rossi Mario,67890,9,62.3,3-1
 
 REQUIREMENTS:
     pip install gspread google-auth pandas
+
+OUTPUT CONSOLE:
+    🚀 IMPORT TORNEO: 2025_11_18_OP12.csv
+    📊 Stagione: OP12
+    📂 Lettura CSV... ✅
+    👥 Partecipanti: 16
+    📅 Data: 2025-11-18
+    🎮 Round: 4
+    🏆 Vincitore: Pietro Cogliati
+    ⚙️  Configurazione OP12... ✅
+    🧮 Calcolo punti... ✅
+    💰 Calcolo buoni... ✅
+    💾 Scrittura dati... ✅
+    📈 Aggiornamento standings... ✅
+    🎮 Check achievement... ✅
+    ✅ IMPORT COMPLETATO!
+=================================================================================
 """
 
 import pandas as pd
@@ -25,10 +68,21 @@ import gspread
 from google.oauth2.service_account import Credentials
 import json
 import math
+import sys
 from datetime import datetime
 import re
 from typing import Dict, List, Tuple
 import argparse
+from achievements import check_and_unlock_achievements
+from import_validator import (
+    ImportValidator,
+    validate_onepiece_csv,
+    validate_google_sheets,
+    validate_season,
+    check_tournament_exists,
+    batch_delete_tournament,
+    extract_date_from_filename
+)
 
 
 # ============================================
@@ -169,7 +223,7 @@ def calculate_tournament_points(df: pd.DataFrame) -> pd.DataFrame:
     Calcola i punti per ogni giocatore in un torneo.
 
     Formula:
-    - Punti Vittoria = Win Points / 3
+    - Punti Vittoria = Win Points (già calcolato come W*3)
     - Punti Ranking = N_partecipanti - (Ranking - 1)
     - Punti Totali = Punti Vittoria + Punti Ranking
 
@@ -182,8 +236,8 @@ def calculate_tournament_points(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     n_participants = len(df)
 
-    # Calcolo punti vittoria
-    df['Points_Victory'] = df['Win Points'] / 3
+    # Calcolo punti vittoria - win_points è già corretto (W*3)
+    df['Points_Victory'] = df['Win Points']
 
     # Calcolo punti ranking
     df['Points_Ranking'] = n_participants - (df['Ranking'] - 1)
@@ -203,12 +257,13 @@ def identify_record_categories(df: pd.DataFrame, n_rounds: int) -> pd.DataFrame:
         n_rounds: Numero di round del torneo
 
     Returns:
-        DataFrame con colonna 'Category' aggiunta
+        DataFrame con colonne 'Category', 'Wins', 'Losses' aggiunte
     """
     df = df.copy()
 
-    # Calcolo losses
-    df['Losses'] = n_rounds - (df['Win Points'] / 3)
+    # Calcolo wins e losses (Win Points = W*3, quindi W = Win Points / 3)
+    df['Wins'] = (df['Win Points'] / 3).astype(int)
+    df['Losses'] = n_rounds - df['Wins']
 
     # Categoria
     df['Category'] = df['Losses'].apply(lambda x:
@@ -217,7 +272,7 @@ def identify_record_categories(df: pd.DataFrame, n_rounds: int) -> pd.DataFrame:
 
     # Record (es. "4-0", "3-1")
     df['Record'] = df.apply(
-        lambda row: f"{int(row['Win Points']/3)}-{int(row['Losses'])}",
+        lambda row: f"{int(row['Wins'])}-{int(row['Losses'])}",
         axis=1
     )
 
@@ -423,6 +478,15 @@ def update_seasonal_standings(sheet, season_id: str, df: pd.DataFrame, tournamen
     ws_standings = sheet.worksheet("Seasonal_Standings_PROV")
     ws_results = sheet.worksheet("Results")
     ws_tournaments = sheet.worksheet("Tournaments")
+    ws_config = sheet.worksheet("Config")
+
+    # Leggi status season dalla Config
+    config_data = ws_config.get_all_values()
+    season_status = None
+    for row in config_data[4:]:  # Skip header (righe 1-3)
+        if row and row[0] == season_id:  # Col 0 = Season_ID
+            season_status = row[4].strip().upper() if len(row) > 4 else ""  # Col 4 = Status
+            break
 
     # Conta quanti tornei ci sono in questa stagione
     all_tournaments = ws_tournaments.get_all_values()
@@ -430,9 +494,13 @@ def update_seasonal_standings(sheet, season_id: str, df: pd.DataFrame, tournamen
     total_tournaments = len(season_tournaments)
 
     print(f"      Tornei stagione: {total_tournaments}")
+    print(f"      Status stagione: {season_status}")
 
     # Calcola quanti tornei contare
-    if total_tournaments < 8:
+    if season_status == "ARCHIVED":
+        max_to_count = total_tournaments
+        print(f"      Scarto: NESSUNO (stagione ARCHIVED - archivio dati)")
+    elif total_tournaments < 8:
         max_to_count = total_tournaments
         print(f"      Scarto: NESSUNO (stagione < 8 tornei)")
     else:
@@ -463,11 +531,15 @@ def update_seasonal_standings(sheet, season_id: str, df: pd.DataFrame, tournamen
                 'best_rank': 999
             }
 
+        # Leggi Match_W se disponibile (colonna 10)
+        match_w = int(row[10]) if len(row) > 10 and row[10] else 0
+
         player_data[membership]['tournaments'].append({
             'date': result_tournament_id.split('_')[1] if '_' in result_tournament_id else '',
             'points': points,
             'rank': ranking,
-            'win_points': float(row[4]) if len(row) > 4 and row[4] else 0
+            'win_points': float(row[4]) if len(row) > 4 and row[4] else 0,
+            'match_w': match_w
         })
         player_data[membership]['best_rank'] = min(player_data[membership]['best_rank'], ranking)
 
@@ -495,11 +567,11 @@ def update_seasonal_standings(sheet, season_id: str, df: pd.DataFrame, tournamen
 
         total_points = sum(t['points'] for t in best_tournaments)
         
-        # NUOVO: Tournament_Wins = quanti 1° posti
+        # Tournament_Wins = quanti 1° posti
         tournament_wins = sum(1 for t in tournaments_played if t['rank'] == 1)
-        
-        # NUOVO: Match_Wins = quante partite vinte (da tutti i tornei giocati)
-        match_wins = sum(int(t['win_points'] / 3) for t in tournaments_played)
+
+        # Match_Wins = quante partite vinte (leggi da Match_W se disponibile)
+        match_wins = sum(t.get('match_w', int(t['win_points'] / 3)) for t in tournaments_played)
 
         # Conta top 8
         top8_count = sum(1 for t in tournaments_played if t['rank'] <= 8)
@@ -781,7 +853,7 @@ def import_tournament_to_sheet(sheet, csv_path: str, season_id: str):
         datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         df.iloc[0]['User Name']
     ]
-    ws_tournaments.append_row(tournament_row)
+    ws_tournaments.append_row(tournament_row, value_input_option='RAW')
 
     # 7.2 Scrivi nel foglio Results
     print(f"   📊 Foglio Results...")
@@ -795,12 +867,15 @@ def import_tournament_to_sheet(sheet, csv_path: str, season_id: str):
             int(row['Ranking']),
             int(row['Win Points']),
             row['OMW %'],
-            float(row['Points_Victory']),
-            float(row['Points_Ranking']),
-            float(row['Points_Total']),
-            row['User Name']
+            int(row['Points_Victory']),      # No decimals - già intero
+            int(row['Points_Ranking']),      # No decimals - già intero
+            int(row['Points_Total']),        # No decimals - già intero
+            row['User Name'],
+            int(row['Wins']),                # Match_W
+            0,                                # Match_T (One Piece non ha pareggi)
+            int(row['Losses'])                # Match_L
         ]
-        ws_results.append_row(result_row)
+        ws_results.append_row(result_row, value_input_option='RAW')
 
     # 7.3 Scrivi nel foglio Vouchers
     print(f"   📊 Foglio Vouchers...")
@@ -820,7 +895,7 @@ def import_tournament_to_sheet(sheet, csv_path: str, season_id: str):
             'DRAFT',
             ''
         ]
-        ws_vouchers.append_row(voucher_row)
+        ws_vouchers.append_row(voucher_row, value_input_option='RAW')
 
     # Aggiungi validazione menu a tendina Status (colonna J, dalla riga 4)
         pass  # Ignora se la libreria non è disponibile
@@ -844,7 +919,13 @@ def import_tournament_to_sheet(sheet, csv_path: str, season_id: str):
         ranking = int(row[3]) if row[3] else 999
         win_points = float(row[4]) if row[4] else 0
         points_total = float(row[8]) if row[8] else 0
-        
+
+        # Leggi Match_W dalla colonna 10 se disponibile
+        if len(row) > 10 and row[10]:
+            match_w = int(row[10])
+        else:
+            match_w = int(win_points / 3)  # Fallback per dati vecchi
+
         if membership not in lifetime_stats:
             lifetime_stats[membership] = {
                 'total_tournaments': 0,
@@ -852,11 +933,11 @@ def import_tournament_to_sheet(sheet, csv_path: str, season_id: str):
                 'match_wins': 0,
                 'total_points': 0
             }
-        
+
         lifetime_stats[membership]['total_tournaments'] += 1
         if ranking == 1:
             lifetime_stats[membership]['tournament_wins'] += 1
-        lifetime_stats[membership]['match_wins'] += int(win_points / 3)
+        lifetime_stats[membership]['match_wins'] += match_w
         lifetime_stats[membership]['total_points'] += points_total
     
     # Aggiorna o crea giocatori
@@ -923,6 +1004,33 @@ def import_tournament_to_sheet(sheet, csv_path: str, season_id: str):
             ws_config.update_cell(i, 6, current_count + 1)
             break
 
+    # 7.7 Check e sblocca achievement
+    print(f"   🎮 Check achievement...")
+    try:
+        # Prepara dati nel formato richiesto da check_and_unlock_achievements
+        players_dict = {}
+        for idx, row in df.iterrows():
+            membership = str(row['Membership Number']).zfill(10)
+            players_dict[membership] = row['User Name']
+
+        data = {
+            'tournament': [
+                tournament_id,
+                season_id,
+                tournament_date,
+                n_participants,
+                n_rounds,
+                csv_filename,
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                df.iloc[0]['User Name']
+            ],
+            'players': players_dict
+        }
+
+        check_and_unlock_achievements(sheet, data)
+    except Exception as e:
+        print(f"   ⚠️  Errore achievement check (non bloccante): {e}")
+
     print(f"\n✅ IMPORT COMPLETATO!")
     print(f"\n📊 RIASSUNTO:")
     print(f"   🏆 Vincitore: {df.iloc[0]['User Name']} ({df.iloc[0]['Record']})")
@@ -946,34 +1054,119 @@ def main():
     parser.add_argument('--csv', required=True, help='Path to tournament CSV file')
     parser.add_argument('--season', required=True, help='Season ID (e.g. OP12)')
     parser.add_argument('--test', action='store_true', help='Test mode (no write to sheet)')
+    parser.add_argument('--reimport', action='store_true',
+                        help='Permette reimport torneo esistente (cancella e reimporta)')
 
     args = parser.parse_args()
+
+    print(f"🚀 IMPORT TORNEO ONE PIECE: {args.csv}")
+    print(f"📊 Stagione: {args.season}")
+    print("")
+    print("🔍 VALIDAZIONE IN CORSO...")
+    print("")
+
+    # =========================================
+    # FASE 1: VALIDAZIONE PRE-IMPORT
+    # =========================================
+    validator = ImportValidator()
+
+    # 1.1 Valida file CSV
+    print("   📄 Validazione file CSV...")
+    validated_data = validate_onepiece_csv(args.csv, args.season, validator)
+
+    if validated_data:
+        print(f"   ✅ File CSV valido ({validated_data['participants_count']} partecipanti)")
+
+    # 1.2 Valida Google Sheets (solo se file OK)
+    sheet = None
+    if validator.is_valid():
+        print("   🌐 Validazione Google Sheets...")
+        required_worksheets = ['Results', 'Tournaments', 'Players', 'Config',
+                               'Seasonal_Standings_PROV', 'Vouchers']
+        sheet = validate_google_sheets(SHEET_ID, CREDENTIALS_FILE, required_worksheets, validator)
+
+        if sheet:
+            print("   ✅ Google Sheets accessibile")
+
+            # 1.3 Valida Season
+            print("   📋 Validazione Season...")
+            season_config = validate_season(sheet, args.season, validator)
+
+            if season_config:
+                print(f"   ✅ Season {args.season} trovata (TCG: {season_config.get('tcg')})")
+
+    # =========================================
+    # FASE 2: GESTIONE ERRORI/WARNING
+    # =========================================
+    if not validator.is_valid():
+        print(validator.report())
+        print("\n❌ IMPORT ANNULLATO - Correggi gli errori e riprova")
+        print("📋 Nessuna modifica effettuata al Google Sheet")
+        sys.exit(1)
+
+    if validator.has_warnings():
+        print(validator.report())
+        if not validator.ask_confirmation():
+            print("\n⚠️ IMPORT ANNULLATO dall'utente")
+            sys.exit(0)
+
+    # =========================================
+    # FASE 3: CHECK DUPLICATI
+    # =========================================
+    # Estrai data dal filename
+    tournament_date = extract_date_from_filename(args.csv)
+    if not tournament_date:
+        tournament_date = datetime.now().strftime('%Y-%m-%d')
+        print(f"   ⚠️ Data non trovata nel filename, uso: {tournament_date}")
+
+    tournament_id = f"{args.season}_{tournament_date}"
+
+    print(f"\n   🔎 Check torneo esistente: {tournament_id}...")
+    existing = check_tournament_exists(sheet, tournament_id)
+
+    if existing['exists']:
+        if not args.reimport:
+            print(f"\n❌ Torneo {tournament_id} già importato!")
+            print(f"   Trovati: {existing['results_count']} risultati")
+            print(f"\n   Per reimportare usa: --reimport")
+            sys.exit(1)
+
+        print(f"\n⚠️  REIMPORT: Torneo {tournament_id} verrà sovrascritto")
+        print(f"   Verranno cancellati: {existing['results_count']} risultati")
+
+        confirm = input("   Confermi il REIMPORT? [s/N]: ").strip().lower()
+        if confirm != 's':
+            print("\n⚠️ REIMPORT ANNULLATO dall'utente")
+            sys.exit(0)
+
+        # Cancella dati esistenti
+        print("\n🗑️  Cancellazione dati esistenti...")
+        success, msg, counts = batch_delete_tournament(sheet, tournament_id, existing)
+        if not success:
+            print(f"\n❌ Errore cancellazione: {msg}")
+            sys.exit(1)
+        print(f"   ✅ {msg}")
+    else:
+        print("   ✅ Nessun duplicato trovato")
+
+    # =========================================
+    # FASE 4: IMPORT
+    # =========================================
+    print("\n📥 Import dati...")
 
     if args.test:
         print("🧪 TEST MODE - Nessuna scrittura su Google Sheets\n")
 
-    # Connetti al foglio
-    print("🔗 Connessione a Google Sheets...")
-    try:
-        sheet = connect_to_sheet()
-        print(f"✅ Connesso a: {sheet.title}\n")
-    except Exception as e:
-        print(f"❌ Errore connessione: {e}")
-        print("\n💡 CONTROLLA:")
-        print("   1. SHEET_ID è corretto")
-        print("   2. CREDENTIALS_FILE esiste")
-        print("   3. Service Account ha accesso al foglio")
-        return
-
-    # Import torneo
+    # Import torneo (usa la connessione già validata)
     try:
         df_result = import_tournament_to_sheet(sheet, args.csv, args.season)
-        print("\n🎉 TUTTO OK!")
+        print("\n🎉 IMPORT COMPLETATO!")
 
     except Exception as e:
         print(f"\n❌ ERRORE: {e}")
         import traceback
         traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":

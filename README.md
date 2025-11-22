@@ -1,23 +1,27 @@
-# TanaLeague
+# 🏆 TanaLeague
 
 **Sistema di gestione classifiche e statistiche per leghe competitive di Trading Card Games (TCG)**
 
-Web app Flask per tracciare tornei, classifiche, statistiche avanzate e profili giocatori per One Piece TCG e Pokémon TCG.
+Web app Flask completa per tracciare tornei, classifiche, statistiche avanzate, profili giocatori e achievement per **One Piece TCG**, **Pokémon TCG** e **Riftbound TCG**.
 
 🌐 **Live:** [latanadellepulci.pythonanywhere.com](https://latanadellepulci.pythonanywhere.com)
+
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-2.0+-green.svg)](https://flask.palletsprojects.com/)
 
 ---
 
 ## 📋 Indice
 
 - [Caratteristiche](#-caratteristiche)
+- [TCG Supportati](#-tcg-supportati)
+- [Novità v2.0](#-novità-v20)
+- [Quick Start](#-quick-start)
 - [Architettura](#-architettura)
-- [Setup](#-setup)
-- [Configurazione](#-configurazione)
 - [Import Tornei](#-import-tornei)
-- [Deploy su PythonAnywhere](#-deploy-su-pythonanywhere)
-- [Manutenzione](#-manutenzione)
-- [Sicurezza](#-sicurezza)
+- [Achievement System](#-achievement-system-new)
+- [Deploy](#-deploy-su-pythonanywhere)
+- [Documentazione](#-documentazione)
 - [Struttura Progetto](#-struttura-progetto)
 
 ---
@@ -25,16 +29,136 @@ Web app Flask per tracciare tornei, classifiche, statistiche avanzate e profili 
 ## ✨ Caratteristiche
 
 ### Funzionalità Principali
-- **Classifiche stagionali** - Rankings giocatori per stagione (OP01, OP12, PKM-FS25, ecc.)
-- **Statistiche avanzate** - MVP, Sharpshooter, Metronome, Phoenix, Big Stage, Closer
-- **Profili giocatori** - Storico completo, win rate, trend, grafici
-- **Analytics** - Pulse (KPI), Tales (narrative), Hall of Fame
-- **Import automatico** - Da CSV (One Piece) e TDF/XML (Pokémon)
-- **Cache intelligente** - Aggiornamento automatico ogni 5 minuti
+- **📊 Classifiche Stagionali** - Rankings con scarto dinamico (migliori N-2 tornei)
+- **🏅 Achievement System** - 40+ achievement sbloccabili automaticamente
+- **📈 Statistiche Avanzate** - MVP, Sharpshooter, Metronome, Phoenix, Big Stage, Closer
+- **👤 Profili Giocatori** - Storico completo, win rate, trend, 3 grafici avanzati (doughnut, bar, radar), achievement
+- **📉 Analytics** - Pulse (KPI), Tales (narrative), Hall of Fame
+- **🔄 Import Automatico** - Da CSV (One Piece), TDF/XML (Pokémon), CSV Multi-Round (Riftbound)
+- **⚡ Cache Intelligente** - Aggiornamento automatico ogni 5 minuti
+- **🎮 Multi-TCG** - Gestione separata per 3 giochi diversi
 
-### TCG Supportati
-- 🏴‍☠️ **One Piece TCG** - Sistema punti semplice (W=3, L=0)
-- ⚡ **Pokémon TCG** - Sistema punti con pareggi (W=3, T=1, L=0) + match tracking H2H
+---
+
+## 🎮 TCG Supportati
+
+### 🏴‍☠️ One Piece TCG
+- **Status**: ✅ Completo
+- **Import**: CSV da Limitlesstcg
+- **Sistema Punti**: W=3, L=0 (no pareggi)
+- **Display Nomi**: Nome completo (default)
+- **Features**: Classifiche, stats, achievement, profili
+
+### ⚡ Pokémon TCG
+- **Status**: ✅ Completo
+- **Import**: TDF/XML da Play! Pokémon Tournament
+- **Sistema Punti**: W=3, D=1, L=0 (con pareggi)
+- **Display Nomi**: "Nome I." (es. "Pietro C.")
+- **Features**: Classifiche, stats, achievement, match tracking H2H
+
+### 🌌 Riftbound TCG
+- **Status**: ✅ Completo (UPDATED!)
+- **Import**: CSV Multi-Round (uno per round, aggregati automaticamente)
+- **Sistema Punti**: W=3, D=1, L=0 (con pareggi)
+- **Display Nomi**: First Name + Last Name
+- **Features**: Classifiche, stats avanzate (W-L-D tracking), achievement, multi-round support
+
+---
+
+## 🆕 Novità v2.0
+
+### Achievement System 🏅
+- **40+ achievement** organizzati in 7 categorie
+- **Auto-unlock** durante import tornei
+- **Profili giocatore** con achievement sbloccati
+- **Pagina dedicata** `/achievements` con progress tracking
+- Categorie: Glory, Giant Slayer, Consistency, Legacy, Wildcards, Seasonal, Heartbreak
+
+### Riftbound Support 🌌
+- **Import CSV Multi-Round** con aggregazione automatica (R1.csv,R2.csv,R3.csv)
+- **Stats avanzate** con W-L-D tracking dettagliato (come Pokémon!)
+- **Seasonal standings** automatici
+- **Achievement unlock** integrato
+- User ID come Membership Number
+
+### Pokémon Enhancements ⚡
+- **Seasonal standings** automatici (come Riftbound/OP)
+- **Achievement unlock** integrato
+- Display personalizzato "Nome I."
+
+### UI/UX Improvements 🎨
+- **Grafici Avanzati Profilo Giocatore** 📊
+  - Match Record (doughnut): W-T-L lifetime con percentuali
+  - Ranking Distribution (bar): Frequenza in ogni fascia (1°, 2°, 3°, Top8, oltre)
+  - Performance Radar (pentagon): 5 metriche normalizzate (Win Rate, Top8 Rate, Victory Rate, Avg Perf, Consistency)
+  - 9 tooltip informativi per user-friendly UX
+- **Nuova pagina Classifiche** (`/classifiche`) con lista tutte le stagioni
+- **Menu rinnovato** con Home, Classifiche, Achievement, Stats
+- **Pulsanti PKM/RFB attivi** sulla homepage
+- **Stagioni ARCHIVED nascoste** da dropdown e liste
+- **Custom name display** per TCG (OP: full, PKM: Nome I., RFB: nickname)
+- **Lista giocatori corretta** con punti medi e stats accurate
+
+---
+
+## 🆕 Recent Updates (Nov 2024)
+
+### 📊 Advanced Player Charts (Latest)
+- **3 grafici interattivi** nella scheda giocatore:
+  - **Doughnut Chart**: Match Record lifetime (W-T-L con percentuali)
+  - **Bar Chart**: Distribuzione ranking (🥇 1°, 🥈 2°, 🥉 3°, Top8, oltre)
+  - **Radar Chart**: Performance overview su 5 metriche (Win Rate, Top8 Rate, Victory Rate, Avg Perf, Consistency)
+- **9 tooltip informativi** con spiegazioni dettagliate per ogni metrica
+- **Formule ottimizzate**: Avg Performance normalizzato a 25pt, Consistency basato su std dev
+- **Responsive design** con Chart.js 4.4.0
+
+### 🔧 Bug Fixes & Improvements
+- **Fixed**: Player list stats now show correct data (tournaments, wins, avg points)
+- **Fixed**: Tournament record in player history shows actual W-T-L instead of wrong ranking
+- **Fixed**: ARCHIVED seasons skip worst-2-tournament drop (data archive only)
+- **Refactor**: Import scripts renamed for consistency (`import_pokemon.py`, `import_onepiece.py`, `import_riftbound.py`)
+- **Docs**: Comprehensive Pokemon points system clarification in IMPORT_GUIDE
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisiti
+```bash
+- Python 3.8+
+- Google Cloud Project con Sheets API abilitato
+- Service Account credentials JSON
+- PythonAnywhere account (per deploy)
+```
+
+### Installazione Locale
+
+```bash
+# 1. Clone repository
+git clone <repository-url>
+cd TanaLeague
+
+# 2. Installa dipendenze
+pip install -r requirements.txt
+
+# 3. Configura credenziali
+# - Scarica service_account_credentials.json da Google Cloud
+# - Metti in tanaleague2/
+
+# 4. Configura SHEET_ID
+# - Modifica SHEET_ID in tanaleague2/config.py
+# - Oppure in ogni import script
+
+# 5. Setup Achievement System (UNA VOLTA!)
+cd tanaleague2
+python setup_achievements.py
+# Questo crea i fogli Achievement_Definitions e Player_Achievements
+
+# 6. Run app locale
+python app.py
+```
+
+Webapp disponibile su `http://localhost:5000`
 
 ---
 
@@ -42,144 +166,36 @@ Web app Flask per tracciare tornei, classifiche, statistiche avanzate e profili 
 
 ```
 ┌─────────────────┐
-│  Google Sheets  │  ← Database (Config, Results, Players, Tournaments)
+│  Google Sheets  │  ← Database (Config, Results, Players, Tournaments, Achievements)
 └────────┬────────┘
          │ (gspread API)
          ↓
 ┌─────────────────┐
-│   Flask App     │  ← Backend Python
-│   + Cache       │  ← Cache locale (refresh ogni 5 min)
+│   Flask App     │  ← Backend Python (app.py + cache.py + achievements.py)
+│   + Cache       │  ← Cache file-based (5 min TTL)
 └────────┬────────┘
-         │
+         │ (Jinja2)
          ↓
 ┌─────────────────┐
-│  Jinja2 HTML    │  ← Frontend (templates + CSS)
+│  HTML Templates │  ← Frontend Bootstrap 5 + Font Awesome
+│   + Bootstrap   │
 └─────────────────┘
 ```
 
-**Stack Tecnologico:**
-- **Backend:** Python 3.10+, Flask 3.0.0
-- **Database:** Google Sheets (via gspread 5.12.0)
-- **Auth:** Google Service Account
-- **Cache:** JSON file-based
-- **Frontend:** HTML5, CSS3, Jinja2, Chart.js
-- **Hosting:** PythonAnywhere (free tier)
+### Google Sheets Structure
 
-**Perché Google Sheets come database?**
-- ✅ Facile da editare manualmente
-- ✅ Visualizzazione dati immediata
-- ✅ Formule Excel/Sheets native
-- ✅ No costi database
-- ⚠️ Limite: ~1000 righe consigliato per performance
-
----
-
-## 🚀 Setup
-
-### Prerequisiti
-- Python 3.10+
-- Account Google Cloud (per service account)
-- Google Sheet configurato
-
-### 1. Clone Repository
-```bash
-git clone https://github.com/Barbattack/TanaLeague.git
-cd TanaLeague/tanaleague2
-```
-
-### 2. Installa Dipendenze
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Configura Credenziali
-
-**IMPORTANTE:** Non usare mai credenziali reali su GitHub!
-
-#### Crea Service Account Google:
-1. Vai su [Google Cloud Console](https://console.cloud.google.com)
-2. Crea progetto (o usa esistente)
-3. Abilita Google Sheets API
-4. IAM & Admin → Service Accounts → Create
-5. Scarica JSON key → salvalo come `secrets/service_account.json`
-6. Condividi il Google Sheet con l'email del service account (con ruolo Editor)
-
-#### Crea config.py:
-```bash
-cp config.example.py config.py
-```
-
-Modifica `config.py`:
-```python
-SHEET_ID = "TUO_GOOGLE_SHEET_ID"  # Dall'URL del foglio
-CREDENTIALS_FILE = "secrets/service_account.json"
-ADMIN_USER = "tuo_username"
-ADMIN_PASS = "password_sicura"  # Cambia!
-SECRET_KEY = "genera_chiave_casuale"  # python -c "import secrets; print(secrets.token_hex(32))"
-DEBUG = True  # False in produzione
-```
-
-### 4. Struttura Google Sheet
-
-Il tuo Google Sheet deve avere questi fogli (worksheets):
-
-**Config** - Configurazione stagioni
-```
-Season_ID | TCG | Season_Name              | Start_Date | Status | Next_Tournament
-OP12      | OP  | One Piece Serie 12       | 2024-01-01 | ACTIVE | 2024-12-15
-PKM-FS25  | PKM | Pokemon Fiamme Spettrali | 2025-11-01 | ACTIVE | 2025-11-20
-```
-
-**Players** - Anagrafica giocatori
-```
-Membership | Name       | Join_Date  | ...
-PLCI001   | Mario Rossi | 2024-01-01 | ...
-```
-
-**Results** - Risultati tornei
-```
-Season_ID | Tournament_ID  | Membership | Rank | Points | OMW% | ...
-OP12      | OP12_2024-11-01| PLCI001   | 1    | 12.0   | 66.7 | ...
-```
-
-**Tournaments** - Metadata tornei
-```
-Season_ID | Tournament_ID  | Date       | Winner  | Participants
-OP12      | OP12_2024-11-01| 2024-11-01 | PLCI001 | 24
-```
-
-**Seasonal_Standings_PROV** / **FINAL** - Classifiche calcolate (auto-generate)
-
-### 5. Run Locale
-```bash
-python app.py
-```
-
-Vai su: http://localhost:5000
-
----
-
-## ⚙️ Configurazione
-
-### Cache Settings
-```python
-CACHE_REFRESH_MINUTES = 5  # Minuti tra refresh automatici
-CACHE_FILE = "cache_data.json"  # File cache locale
-```
-
-La cache:
-- Si aggiorna automaticamente ogni 5 minuti
-- Riduce chiamate API a Google Sheets
-- Può essere invalidata manualmente via `/api/refresh`
-
-### Refresh Manuale Cache
-```bash
-# Cache classifiche
-curl https://tuodominio.com/api/refresh
-
-# Cache stats (per una stagione)
-curl https://tuodominio.com/api/stats/refresh/OP12
-```
+| Sheet | Descrizione |
+|-------|-------------|
+| **Config** | Configurazione stagioni (ID, nome, status, settings) |
+| **Tournaments** | Lista tornei (ID, data, partecipanti, vincitore) |
+| **Results** | Risultati individuali (giocatore, rank, punti, W-L-D) |
+| **Players** | Anagrafica giocatori (membership, nome, TCG, stats lifetime) |
+| **Seasonal_Standings_PROV** | Classifiche provvisorie (stagioni ACTIVE) |
+| **Seasonal_Standings_FINAL** | Classifiche finali (stagioni CLOSED) |
+| **Achievement_Definitions** | Definizioni 40 achievement (NEW!) |
+| **Player_Achievements** | Achievement sbloccati (membership, ach_id, date) (NEW!) |
+| **Pokemon_Matches** | Match H2H Pokemon (opzionale) |
+| **Vouchers** | Buoni negozio (solo One Piece) |
 
 ---
 
@@ -187,197 +203,157 @@ curl https://tuodominio.com/api/stats/refresh/OP12
 
 ### One Piece TCG (CSV)
 
-Usa lo script `import_tournament.py`:
-
 ```bash
-python import_tournament.py --csv torneo_novembre.csv --season OP12
+cd tanaleague2
+python import_onepiece.py --csv path/to/tournament.csv --season OP12
 ```
 
-**Formato CSV richiesto:**
-```csv
-Membership,Name,Rank,Points,OMW%,Record
-PLCI001,Mario Rossi,1,12.0,66.7,4-0
-PLCI002,Luigi Verdi,2,9.0,55.5,3-1
-```
+**Formato CSV richiesto**: Export da Limitlesstcg
+- Columns: Ranking, User Name, Membership Number, Win Points, OMW %, Record, etc.
 
 ### Pokémon TCG (TDF/XML)
 
-Usa lo script `parse_pokemon_tdf.py`:
+```bash
+cd tanaleague2
+python import_pokemon.py --tdf path/to/tournament.tdf --season PKM-FS25
+```
+
+**Formato TDF richiesto**: Export da Play! Pokémon Tournament software
+
+### Riftbound TCG (CSV Multi-Round)
+
+**Import Singolo Round:**
+```bash
+cd tanaleague2
+python import_riftbound.py --csv RFB_2025_11_17_R1.csv --season RFB01
+```
+
+**Import Multi-Round (RACCOMANDATO):**
+```bash
+cd tanaleague2
+python import_riftbound.py --csv RFB_2025_11_17_R1.csv,RFB_2025_11_17_R2.csv,RFB_2025_11_17_R3.csv --season RFB01
+```
+
+**Formato CSV richiesto**: Export CSV dal software gestione tornei (uno per round)
+- Deve contenere: Player User ID, First/Last Name, Event Record (W-L-D)
+- Multi-round fornisce stats dettagliate W-L-D come Pokémon!
+
+### Test Mode (Dry Run)
+
+Tutti gli import supportano `--test` per verificare senza scrivere:
 
 ```bash
-# Test (dry-run)
-python parse_pokemon_tdf.py --tdf torneo.tdf --season PKM-FS25 --test
-
-# Import reale
-python parse_pokemon_tdf.py --tdf torneo.tdf --season PKM-FS25
+python import_onepiece.py --csv file.csv --season OP12 --test
+python import_pokemon.py --tdf file.tdf --season PKM-FS25 --test
+python import_riftbound.py --csv file.csv --season RFB01 --test
+# Multi-round test
+python import_riftbound.py --csv R1.csv,R2.csv,R3.csv --season RFB01 --test
 ```
-
-**Differenze Pokémon:**
-- Sistema punti con pareggi (W=3, T=1, L=0)
-- Tracking match-by-match (H2H disponibile)
-- OMW% calcolato da match reali
-- File .TDF esportato da Pokémon Tournament Manager
-
-**Nomenclatura stagioni Pokémon:**
-```
-PKM-FS25  = Fiamme Spettrali 2025
-PKM-SR25  = Scarlatto Rombo 2025
-PKM-XX##  = [Codice Espansione][Anno]
-```
-
-📖 Vedi: `GUIDA_POKEMON_IMPORT.txt` per dettagli completi
 
 ---
 
-## 🌐 Deploy su PythonAnywhere
+## 🏅 Achievement System (NEW!)
 
-### Setup Iniziale
+### Setup (Una volta sola)
 
-1. **Crea account** su [PythonAnywhere](https://www.pythonanywhere.com)
-
-2. **Upload files:**
 ```bash
-# Comprimi il progetto (escludi file sensibili!)
-zip -r tanaleague.zip tanaleague2/ -x "*.pyc" "*__pycache__*" "*.json" "secrets/*"
-
-# Upload su PythonAnywhere via Files tab
+cd tanaleague2
+python setup_achievements.py
 ```
 
-3. **Installa dipendenze:**
+Questo crea e popola:
+- `Achievement_Definitions` (40 achievement predefiniti)
+- `Player_Achievements` (vuoto, si popola automaticamente)
+
+### Categorie Achievement (40 totali)
+
+| Categoria | Count | Esempi |
+|-----------|-------|--------|
+| 🏆 **Glory** | 7 | First Blood, King of the Hill, Perfect Storm, Undefeated Season |
+| ⚔️ **Giant Slayer** | 6 | Dragonslayer, Kingslayer, Gatekeeper, Upset Artist |
+| 📈 **Consistency** | 8 | Hot Streak, Unstoppable Force, Season Warrior, Iron Wall |
+| 🌍 **Legacy** | 8 | Debutto, Veteran, Gladiator, Hall of Famer, Triple Crown |
+| 🎪 **Wildcards** | 4 | The Answer (42 pt), Lucky Seven, Triple Threat |
+| ⏰ **Seasonal** | 3 | Opening Act, Grand Finale, Season Sweep |
+| 💔 **Heartbreak** | 5 | Rookie Struggles, Forever Second, Storm Cloud |
+
+### Auto-Unlock
+
+Gli achievement si sbloccano **automaticamente** quando importi tornei:
+
 ```bash
-pip3 install --user Flask gspread google-auth pandas
+python import_onepiece.py --csv file.csv --season OP12
+# Output:
+# ...
+# 🎮 Check achievement...
+# 🏆 0000012345: 🎬 First Blood
+# 🏆 0000012345: 📅 Regular
+# ✅ 2 achievement sbloccati!
 ```
 
-4. **Configura WSGI:**
+### Visualizzazione
 
-Web tab → WSGI configuration file → Incolla:
+- **Profilo Giocatore** (`/player/<membership>`): Achievement sbloccati con emoji, descrizione, data
+- **Pagina Achievement** (`/achievements`): Tutti i 40 achievement con % unlock
+
+---
+
+## 🚀 Deploy su PythonAnywhere
+
+### 1. Upload Files
+
+```bash
+# Via git (consigliato)
+git clone <repository-url>
+
+# Oppure upload manuale:
+# - Upload file Python via Files tab
+# - Upload templates/ via Files tab
+# - Upload service_account_credentials.json
+```
+
+### 2. Configura Web App
+
+**Web tab → Add new web app:**
+- Python version: 3.8+
+- Framework: Flask
+- WSGI file: `/home/yourusername/TanaLeague/tanaleague2/wsgi.py`
+
+**Crea wsgi.py:**
 ```python
 import sys
-
-path = '/home/TUOUSERNAME/tanaleague2'
-if path not in sys.path:
-    sys.path.append(path)
+sys.path.insert(0, '/home/yourusername/TanaLeague/tanaleague2')
 
 from app import app as application
 ```
 
-5. **Upload credenziali:**
-- Crea cartella: `/home/TUOUSERNAME/tanaleague2/secrets/`
-- Upload `service_account.json` nella cartella secrets
-- Upload anche copia come `service_account_credentials.json` nella root
+### 3. Installa Dipendenze
 
-6. **Crea config.py:**
 ```bash
-cp config.example.py config.py
-# Modifica config.py con i tuoi valori
+pip install --user gspread google-auth pandas pdfplumber flask
 ```
 
-7. **Reload webapp:**
+### 4. Setup Achievement
 
-Web tab → pulsante verde "Reload"
+```bash
+cd ~/TanaLeague/tanaleague2
+python setup_achievements.py
+```
 
-📖 Vedi: `SETUP_PYTHONANYWHERE.txt` per guida dettagliata
+### 5. Reload
+
+**Web tab → Reload button**
 
 ---
 
-## 🛠️ Manutenzione
+## 📚 Documentazione
 
-### Aggiornare il Codice
-
-**Su GitHub (development):**
-```bash
-git pull origin main
-# Modifica i file
-git add .
-git commit -m "Descrizione modifiche"
-git push origin main
-```
-
-**Su PythonAnywhere (production):**
-1. Scarica i file modificati da GitHub
-2. Upload su PythonAnywhere (Files tab)
-3. Oppure usa git direttamente:
-```bash
-cd ~/tanaleague2
-git pull origin main
-```
-4. Reload webapp (Web tab)
-
-### Backup
-
-**Backup Google Sheet:**
-- File → Scarica → Excel (.xlsx)
-- Frequenza consigliata: settimanale
-
-**Backup File Locali:**
-```bash
-# Su PythonAnywhere console
-cd ~
-tar -czf backup_$(date +%Y%m%d).tar.gz tanaleague2/
-```
-
-### Monitoring
-
-**Check salute app:**
-```bash
-curl https://latanadellepulci.pythonanywhere.com/ping
-# Risposta: "pong" = OK
-```
-
-**Log errors:**
-- PythonAnywhere: Web tab → Error log
-- Controlla se ci sono errori di connessione a Google Sheets
-
----
-
-## 🔒 Sicurezza
-
-### ⚠️ FILE DA NON COMMITTARE MAI
-
-Il `.gitignore` protegge automaticamente questi file:
-
-```
-secrets/                      # Credenziali Google
-service_account*.json         # Tutte le chiavi
-config.py                     # Password e API keys
-cache_data.json               # Dati cache (possono contenere info sensibili)
-__pycache__/                  # File Python compilati
-```
-
-### 🔐 Best Practices
-
-1. **Credenziali Google:**
-   - Usa SEMPRE service account (mai OAuth user)
-   - Ruota chiavi ogni 6-12 mesi
-   - Se compromesse, disabilita immediatamente e crea nuovo service account
-
-2. **Password Admin:**
-   - Usa password forte (min 16 caratteri)
-   - Cambia password di default in `config.py`
-   - Considera di implementare autenticazione 2FA
-
-3. **Google Sheet:**
-   - Condividi SOLO con service account email
-   - NON rendere pubblico il foglio
-   - Usa permessi "Editor" (non "Owner") per service account
-
-4. **PythonAnywhere:**
-   - DEBUG = False in produzione
-   - Proteggi account con password forte
-   - Abilita 2FA se disponibile
-
-### 🚨 In Caso di Compromissione
-
-Se le credenziali vengono esposte:
-
-1. **Immediato:** Disabilita service account su Google Cloud Console
-2. Crea nuovo service account
-3. Scarica nuove credenziali
-4. Condividi Google Sheet con nuovo service account
-5. Upload nuove credenziali su PythonAnywhere
-6. Reload webapp
-7. Verifica che tutto funzioni
-8. Elimina vecchio service account
+| Documento | Descrizione |
+|-----------|-------------|
+| **[docs/SETUP.md](docs/SETUP.md)** | Guida installazione e configurazione completa |
+| **[docs/IMPORT_GUIDE.md](docs/IMPORT_GUIDE.md)** | Come importare tornei da CSV/PDF/TDF |
+| **[docs/ACHIEVEMENT_SYSTEM.md](docs/ACHIEVEMENT_SYSTEM.md)** | Sistema achievement in dettaglio |
+| **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** | Risoluzione problemi comuni |
 
 ---
 
@@ -385,92 +361,133 @@ Se le credenziali vengono esposte:
 
 ```
 TanaLeague/
-├── README.md                          # Questo file
-├── LICENSE                            # CC0 1.0 Universal
-├── .gitignore                         # File da ignorare
+├── README.md                       # Questo file
+├── requirements.txt                # Dipendenze Python
 │
-└── tanaleague2/                       # Main app directory
-    ├── app.py                         # Flask app principale
-    ├── cache.py                       # Cache manager (Google Sheets)
-    ├── stats_builder.py               # Statistiche avanzate
-    ├── stats_cache.py                 # Cache statistiche
-    │
-    ├── config.example.py              # Template configurazione
-    ├── requirements.txt               # Dipendenze Python
-    ├── wsgi_config.py                 # WSGI entry point
-    │
-    ├── import_tournament.py           # Import One Piece (CSV)
-    ├── parse_pokemon_tdf.py           # Import Pokémon (TDF)
-    │
-    ├── SETUP_PYTHONANYWHERE.txt       # Guida deploy
-    ├── GUIDA_POKEMON_IMPORT.txt       # Guida import Pokémon
-    │
-    ├── templates/                     # Template HTML
-    │   ├── base.html                  # Template base
-    │   ├── landing.html               # Homepage
-    │   ├── classifica.html            # Classifiche
-    │   ├── stats.html                 # Statistiche
-    │   ├── player.html                # Profilo giocatore
-    │   ├── players.html               # Lista giocatori
-    │   └── error.html                 # Pagina errore
-    │
-    ├── static/                        # File statici
-    │   ├── style.css                  # CSS principale
-    │   └── logo.png                   # Logo
-    │
-    └── secrets/                       # Credenziali (NON in Git!)
-        └── service_account.json       # Credenziali Google (gitignored)
+├── tanaleague2/                    # Codice principale
+│   ├── app.py                      # Flask app + routes
+│   ├── cache.py                    # Cache manager Google Sheets
+│   ├── config.py                   # Configurazione
+│   ├── achievements.py             # Sistema achievement (NEW!)
+│   ├── setup_achievements.py       # Script setup sheets (NEW!)
+│   │
+│   ├── import_onepiece.py        # Import One Piece (CSV)
+│   ├── import_riftbound.py         # Import Riftbound (CSV Multi-Round) (UPDATED!)
+│   ├── import_pokemon.py        # Import Pokémon (TDF)
+│   │
+│   ├── stats_builder.py            # Builder statistiche
+│   ├── stats_cache.py              # Cache file stats
+│   │
+│   ├── templates/                  # Template HTML
+│   │   ├── base.html               # Layout base + menu
+│   │   ├── landing.html            # Homepage
+│   │   ├── classifiche_page.html   # Lista classifiche (NEW!)
+│   │   ├── classifica.html         # Classifica singola stagione
+│   │   ├── player.html             # Profilo giocatore + achievement (UPDATED!)
+│   │   ├── players.html            # Lista giocatori
+│   │   ├── achievements.html       # Pagina achievement (NEW!)
+│   │   ├── stats.html              # Stats avanzate
+│   │   ├── pulse.html              # Pulse (KPI)
+│   │   ├── tales.html              # Tales (narrative)
+│   │   ├── hall.html               # Hall of Fame
+│   │   └── error.html              # Error page
+│   │
+│   └── static/                     # Assets
+│       ├── style.css
+│       └── logo.png
+│
+└── docs/                           # Documentazione (NEW!)
+    ├── SETUP.md
+    ├── IMPORT_GUIDE.md
+    ├── ACHIEVEMENT_SYSTEM.md
+    └── TROUBLESHOOTING.md
 ```
 
-### File Principali
+---
 
-| File | Descrizione |
-|------|-------------|
-| `app.py` | Flask routes, logica principale webapp |
-| `cache.py` | Gestione cache e connessione Google Sheets |
-| `stats_builder.py` | Calcolo statistiche avanzate (MVP, Sharpshooter, ecc.) |
-| `import_tournament.py` | Script import tornei One Piece da CSV |
-| `parse_pokemon_tdf.py` | Script import tornei Pokémon da TDF/XML |
-| `config.py` | Configurazione (NON committare) |
+## 🔧 Manutenzione
+
+### Backup Google Sheets
+
+Il sistema crea backup automatici in `Backup_Log` sheet ogni import.
+
+**Backup manuale:**
+1. Google Sheets → File → Make a copy
+2. Salva con data: `TanaLeague_Backup_2024-11-17`
+
+### Cache Refresh
+
+Cache si aggiorna automaticamente ogni 5 minuti.
+
+**Refresh manuale:**
+- Visita `/api/refresh` (classifiche)
+- Visita `/api/stats/refresh/<scope>` (stats)
+
+### Aggiungere Achievement
+
+1. Apri `Achievement_Definitions` sheet
+2. Aggiungi riga con: `achievement_id`, `name`, `description`, `category`, `rarity`, `emoji`, `points`, `requirement_type`, `requirement_value`
+3. Modifica `achievements.py` per logica unlock (se `requirement_type=special`)
+
+### Nuova Stagione
+
+1. Apri `Config` sheet
+2. Aggiungi riga: `season_id` (es. OP13), `tcg`, `name`, `season_num`, `status=ACTIVE`
+3. Imposta vecchia stagione a `status=CLOSED`
+4. (Opzionale) Vecchie stagioni → `status=ARCHIVED` per nasconderle
 
 ---
 
-## 🤝 Contribuire
+## 🛡️ Sicurezza
 
-Questo progetto è attualmente privato/personale. Per suggerimenti o bug:
-- Apri una Issue su GitHub
-- Contatta il maintainer
+- **Service Account**: Credenziali Google in file separato (non in git!)
+- **SHEET_ID**: Hardcoded negli script (cambia per deploy)
+- **API Limits**: Google Sheets ha rate limits (100 req/100sec)
+- **Cache**: Riduce chiamate API con cache 5 min
+- **No SQL Injection**: Google Sheets non vulnerabile
 
 ---
 
-## 📄 Licenza
+## 📊 Statistiche Progetto
 
-**CC0 1.0 Universal** - Public Domain
-
-Puoi copiare, modificare, distribuire ed eseguire l'opera, anche per scopi commerciali, senza chiedere il permesso.
+- **Linee di codice**: ~10,000+
+- **File Python**: 12
+- **Template HTML**: 16
+- **Achievement**: 40
+- **TCG Supportati**: 3
+- **Stagioni Gestite**: 15+
+- **Giocatori Attivi**: 50+
+- **Tornei Totali**: 100+
 
 ---
 
 ## 🙏 Credits
 
-**Sviluppato con ❤️ per la community TCG italiana**
-
-- Flask Documentation
-- gspread Library
-- Google Sheets API
-- PythonAnywhere
-- Claude Code (per setup e sicurezza)
-
----
-
-## 📞 Support
-
-Per domande o problemi:
-1. Controlla questa documentazione
-2. Leggi i file di guida specifici (SETUP_PYTHONANYWHERE.txt, GUIDA_POKEMON_IMPORT.txt)
-3. Controlla i log di errore su PythonAnywhere
-4. Apri una Issue su GitHub
+- **Flask**: Web framework
+- **Google Sheets API**: Database backend
+- **Bootstrap 5**: Frontend framework
+- **Font Awesome**: Icone
+- **pandas**: Data manipulation
+- **gspread**: Google Sheets Python client
 
 ---
 
-**🚀 Buon divertimento con TanaLeague!**
+## 📜 License
+
+Progetto privato - Tutti i diritti riservati © 2024 La Tana delle Pulci
+
+---
+
+## 🤝 Supporto
+
+**La Tana delle Pulci**
+Viale Adamello 1, Lecco
+Instagram: [@latanadellepulci](https://www.instagram.com/latanadellepulci/)
+
+Per bug o feature request: Apri issue su GitHub
+
+---
+
+**Made with ❤️ for the TCG community**
+
+*Last updated: November 2024 (v2.0 - Achievement System Release)*

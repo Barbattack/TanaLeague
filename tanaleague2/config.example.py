@@ -1,4 +1,3 @@
-import os
 # -*- coding: utf-8 -*-
 """
 TanaLeague - Configuration Template
@@ -8,6 +7,8 @@ ISTRUZIONI:
 2. Modifica i valori con le tue credenziali reali
 3. NON caricare mai config.py su GitHub!
 """
+
+import os
 
 # ==================
 # GOOGLE SHEETS
@@ -27,10 +28,18 @@ CREDENTIALS_FILE = os.getenv("PULCI_SA_CREDENTIALS") or (
 # ==================
 # ADMIN LOGIN
 # ==================
-# Credenziali per accesso admin (se implementato)
-# IMPORTANTE: Usa una password FORTE e UNICA!
-ADMIN_USER = "tuo_username"
-ADMIN_PASS = "cambia_questa_password_con_una_sicura"
+# Username per accesso admin panel
+ADMIN_USERNAME = "admin"
+
+# Password HASH (NON la password in chiaro!)
+# Per generare l'hash, esegui in Python:
+#   from werkzeug.security import generate_password_hash
+#   print(generate_password_hash("la_tua_password_sicura"))
+# Poi copia l'output qui sotto
+ADMIN_PASSWORD_HASH = "pbkdf2:sha256:600000$SOSTITUISCI_CON_HASH_GENERATO"
+
+# Timeout sessione admin in minuti (dopo questo tempo, logout automatico)
+SESSION_TIMEOUT = 30
 
 # ==================
 # CACHE SETTINGS

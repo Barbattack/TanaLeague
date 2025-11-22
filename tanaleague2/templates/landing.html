@@ -31,6 +31,17 @@
     </div>
     
     <div class="col-md-4 col-lg-3">
+      {% if pkm_active_season_id %}
+      <a href="{{ url_for('classifica', season_id=pkm_active_season_id) }}" class="text-decoration-none">
+        <div class="card h-100 border-warning">
+          <div class="card-body text-center">
+            <div class="fs-1 mb-2">⚡</div>
+            <h5 class="card-title text-warning">Pokémon</h5>
+            <p class="text-muted small mb-0">Vedi classifica stagione attuale →</p>
+          </div>
+        </div>
+      </a>
+      {% else %}
       <div class="card h-100 border-warning">
         <div class="card-body text-center">
           <div class="fs-1 mb-2">⚡</div>
@@ -38,9 +49,21 @@
           <p class="text-muted small mb-0">In arrivo...</p>
         </div>
       </div>
+      {% endif %}
     </div>
-    
+
     <div class="col-md-4 col-lg-3">
+      {% if rfb_active_season_id %}
+      <a href="{{ url_for('classifica', season_id=rfb_active_season_id) }}" class="text-decoration-none">
+        <div class="card h-100 border-info">
+          <div class="card-body text-center">
+            <div class="fs-1 mb-2">🌌</div>
+            <h5 class="card-title text-info">Riftbound</h5>
+            <p class="text-muted small mb-0">Vedi classifica stagione attuale →</p>
+          </div>
+        </div>
+      </a>
+      {% else %}
       <div class="card h-100 border-info">
         <div class="card-body text-center">
           <div class="fs-1 mb-2">🌌</div>
@@ -48,6 +71,7 @@
           <p class="text-muted small mb-0">In arrivo...</p>
         </div>
       </div>
+      {% endif %}
     </div>
   </div>
 </div>

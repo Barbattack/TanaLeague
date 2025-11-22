@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Achievement - TanaLeague{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card border-primary" style="border-width: 3px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card-body text-white">
+                <h1 class="mb-2"><i class="fas fa-trophy"></i> Achievement System</h1>
+                <p class="mb-3">Sblocca achievement completando obiettivi, raggiungendo traguardi e vivendo momenti epici nei tornei!</p>
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <h3 class="mb-0">{{ total_achievements }}</h3>
+                        <small>Achievement Totali</small>
+                    </div>
+                    <div class="col-md-4">
+                        <h3 class="mb-0">{{ total_points }}</h3>
+                        <small>Punti Disponibili</small>
+                    </div>
+                    <div class="col-md-4">
+                        <h3 class="mb-0">{{ total_players }}</h3>
+                        <small>Giocatori Attivi</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Legenda Rarity -->
+<div class="alert alert-info mb-4">
+    <h6 class="mb-2"><i class="fas fa-info-circle"></i> Rarity Levels:</h6>
+    <div class="d-flex flex-wrap gap-2">
+        <span class="badge bg-secondary">Common</span>
+        <span class="badge bg-success">Uncommon</span>
+        <span class="badge bg-primary">Rare</span>
+        <span class="badge bg-purple">Epic</span>
+        <span class="badge bg-warning text-dark">Legendary</span>
+    </div>
+    <small class="text-muted mt-2 d-block">La % indica quanti giocatori hanno sbloccato l'achievement.</small>
+</div>
+
+<!-- Achievement per categoria -->
+{% for category, achievements in achievements_by_category %}
+<div class="card mb-4">
+    <div class="card-header
+        {% if category == 'Glory' %}bg-warning text-dark{% endif %}
+        {% if category == 'Giant Slayer' %}bg-danger text-white{% endif %}
+        {% if category == 'Consistency' %}bg-primary text-white{% endif %}
+        {% if category == 'Legacy' %}bg-secondary text-white{% endif %}
+        {% if category == 'Wildcards' %}bg-purple text-white{% endif %}
+        {% if category == 'Seasonal' %}bg-info text-white{% endif %}
+        {% if category == 'Heartbreak' %}bg-dark text-white{% endif %}">
+        <h5 class="mb-0">
+            {% if category == 'Glory' %}🏆{% endif %}
+            {% if category == 'Giant Slayer' %}⚔️{% endif %}
+            {% if category == 'Consistency' %}📈{% endif %}
+            {% if category == 'Legacy' %}🌍{% endif %}
+            {% if category == 'Wildcards' %}🎪{% endif %}
+            {% if category == 'Seasonal' %}⏰{% endif %}
+            {% if category == 'Heartbreak' %}💔{% endif %}
+            {{ category }}
+            <span class="badge bg-light text-dark float-end">{{ achievements|length }} achievement</span>
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% for ach in achievements %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100 shadow-sm
+                    {% if ach.rarity == 'Legendary' %}border-warning{% endif %}
+                    {% if ach.rarity == 'Epic' %}border-purple{% endif %}
+                    {% if ach.rarity == 'Rare' %}border-primary{% endif %}"
+                    {% if ach.rarity == 'Legendary' %}style="border-width: 3px; box-shadow: 0 0 15px rgba(255, 193, 7, 0.5);"{% endif %}
+                    {% if ach.rarity == 'Epic' %}style="border-width: 2px; box-shadow: 0 0 10px rgba(138, 43, 226, 0.3);"{% endif %}>
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <div class="me-2" style="font-size: 2rem;">{{ ach.emoji }}</div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold
+                                    {% if ach.rarity == 'Legendary' %}text-warning{% endif %}
+                                    {% if ach.rarity == 'Epic' %}text-purple{% endif %}
+                                    {% if ach.rarity == 'Rare' %}text-primary{% endif %}">
+                                    {{ ach.name }}
+                                </h6>
+                                <p class="mb-2 small text-muted">{{ ach.description }}</p>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge
+                                        {% if ach.rarity == 'Legendary' %}bg-warning text-dark{% endif %}
+                                        {% if ach.rarity == 'Epic' %}bg-purple{% endif %}
+                                        {% if ach.rarity == 'Rare' %}bg-primary{% endif %}
+                                        {% if ach.rarity == 'Uncommon' %}bg-success{% endif %}
+                                        {% if ach.rarity == 'Common' %}bg-secondary{% endif %}">
+                                        {{ ach.rarity }}
+                                    </span>
+                                    <small class="text-muted fw-bold">{{ ach.points }} pt</small>
+                                </div>
+                                <!-- Progress bar unlock % -->
+                                <div class="progress" style="height: 18px;">
+                                    <div class="progress-bar
+                                        {% if ach.unlock_percentage >= 50 %}bg-success{% endif %}
+                                        {% if ach.unlock_percentage >= 20 and ach.unlock_percentage < 50 %}bg-info{% endif %}
+                                        {% if ach.unlock_percentage < 20 %}bg-warning{% endif %}"
+                                        role="progressbar"
+                                        style="width: {{ ach.unlock_percentage }}%;"
+                                        aria-valuenow="{{ ach.unlock_percentage }}" aria-valuemin="0" aria-valuemax="100">
+                                        <small>{{ "%.1f"|format(ach.unlock_percentage) }}%</small>
+                                    </div>
+                                </div>
+                                <small class="text-muted">{{ ach.unlock_count }} / {{ total_players }} giocatori</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Info Box -->
+<div class="alert alert-success">
+    <h6><i class="fas fa-lightbulb"></i> Come sbloccare achievement</h6>
+    <p class="mb-0">Gli achievement vengono sbloccati automaticamente quando importi tornei! Partecipa ai tornei, raggiungi obiettivi, e vedi il tuo profilo arricchirsi di achievement. Alcuni sono facili, altri quasi impossibili... ce la farai? 🎯</p>
+</div>
+
+<style>
+.bg-purple {
+    background-color: #8a2be2 !important;
+}
+.text-purple {
+    color: #8a2be2 !important;
+}
+.border-purple {
+    border-color: #8a2be2 !important;
+}
+</style>
+{% endblock %}
