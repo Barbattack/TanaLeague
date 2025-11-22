@@ -137,23 +137,37 @@ python import_riftbound.py --csv R1.csv,R2.csv,R3.csv --season RFB01
 python import_riftbound.py --csv R1.csv,R2.csv,R3.csv --season RFB01 --test
 ```
 
-### Struttura CSV
+### Struttura CSV (22 colonne)
 
-**Colonne chiave:**
+**Tutte le colonne:**
 ```
 Col 0:  Table Number
-Col 4:  Player 1 User ID        ← Membership Number
-Col 5:  Player 1 First Name
-Col 6:  Player 1 Last Name
-Col 8:  Player 2 User ID        ← Membership Number
-Col 9:  Player 2 First Name
-Col 10: Player 2 Last Name
-Col 13: Match Result            ← Formato: "Nome Cognome: 2-0-0"
-Col 16: Player 1 Event Record   ← W-L-D totale torneo
-Col 17: Player 2 Event Record   ← W-L-D totale torneo
+Col 1:  Feature Match
+Col 2:  Ghost Match
+Col 3:  Match Deck Checked
+Col 4:  Player 1 User ID        ← CRITICO: Membership Number
+Col 5:  Player 1 First Name     ← CRITICO
+Col 6:  Player 1 Last Name      ← CRITICO
+Col 7:  Player 1 Email
+Col 8:  Player 2 User ID        ← CRITICO: Membership Number
+Col 9:  Player 2 First Name     ← CRITICO
+Col 10: Player 2 Last Name      ← CRITICO
+Col 11: Player 2 Email
+Col 12: Match Status
+Col 13: Match Result            ← CRITICO: Formato "Nome Cognome: 2-0-0"
+Col 14: Player 1 Round Record
+Col 15: Player 2 Round Record
+Col 16: Player 1 Event Record   ← CRITICO: W-L-D totale torneo
+Col 17: Player 2 Event Record   ← CRITICO: W-L-D totale torneo
+Col 18: Past Interactions
+Col 19: Judge at table
+Col 20: Registration
+Col 21: Match Status (duplicato)
 ```
 
-**IMPORTANTE:** L'User ID (colonne 4 e 8) è usato come Membership Number nel sistema TanaLeague.
+**IMPORTANTE:**
+- L'User ID (colonne 4 e 8) è usato come Membership Number
+- Il validatore richiede **almeno 22 colonne** per ogni riga
 
 ### Multi-Round Aggregation
 
@@ -950,6 +964,149 @@ def format_player_name(name, tcg, membership=''):
 
 ---
 
+## 🛡️ Import Validator (import_validator.py)
+
+### Overview
+
+Sistema di validazione pre-import che garantisce:
+- **Nessuna scrittura** su Google Sheets se ci sono errori
+- **Report dettagliato** con riga/linea esatta degli errori
+- **Conferma utente** per warning non bloccanti
+- **Supporto reimport** sicuro con cancellazione atomica (batch)
+
+### Filosofia: "Validate Everything, Write Nothing Until Safe"
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  FASE 1-4: VALIDAZIONE (può fallire, nessun danno)          │
+│  ─────────────────────────────────────────────────────────  │
+│  1. File esiste e leggibile?                                │
+│  2. Formato corretto (XML/CSV valido)?                      │
+│  3. Struttura attesa (tag/colonne)?                         │
+│  4. Dati sensati (tipi, range)?                             │
+│  5. Google Sheets raggiungibile? Sheet esistono?            │
+│  6. Torneo già importato? (no duplicati)                    │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼ TUTTO OK?
+              ┌───────────┴───────────┐
+              │ NO                    │ SÌ
+              ▼                       ▼
+    ┌─────────────────┐    ┌─────────────────────────────────┐
+    │ ❌ STOP         │    │  FASE 5: IMPORT                 │
+    │ Report errori   │    │  (batch write, tutto insieme)   │
+    │ Sheet INTATTO   │    └─────────────────────────────────┘
+    └─────────────────┘
+```
+
+### Classe ImportValidator
+
+```python
+from import_validator import ImportValidator
+
+validator = ImportValidator()
+
+# Aggiungere errori/warning
+validator.add_error("Messaggio errore", line=15, detail="Dettaglio")
+validator.add_warning("Messaggio warning", line=20)
+
+# Verifiche
+if not validator.is_valid():    # Errori critici?
+    print(validator.report())   # Stampa report formattato
+    sys.exit(1)
+
+if validator.has_warnings():    # Warning presenti?
+    if not validator.ask_confirmation():  # Chiedi conferma
+        sys.exit(0)
+```
+
+### Funzioni di Validazione Disponibili
+
+| Funzione | TCG | Descrizione |
+|----------|-----|-------------|
+| `validate_pokemon_tdf()` | PKM | Valida file TDF/XML Pokemon |
+| `validate_onepiece_csv()` | OP | Valida CSV Bandai One Piece |
+| `validate_riftbound_csv()` | RFB | Valida CSV multi-round Riftbound |
+| `validate_google_sheets()` | Tutti | Verifica connessione e worksheet |
+| `validate_season()` | Tutti | Verifica season in Config |
+| `check_tournament_exists()` | Tutti | Check duplicati |
+| `batch_delete_tournament()` | Tutti | Cancellazione atomica per reimport |
+
+### Flag --reimport
+
+Tutti gli script di import supportano il flag `--reimport` per sovrascrivere tornei esistenti:
+
+```bash
+# Import normale (blocca se esiste)
+python import_pokemon.py --tdf torneo.tdf --season PKM01
+
+# Reimport (cancella e reimporta)
+python import_pokemon.py --tdf torneo.tdf --season PKM01 --reimport
+```
+
+**Flusso --reimport:**
+1. Validazione completa (come sempre)
+2. Trova dati esistenti del torneo
+3. Chiede conferma esplicita all'utente
+4. Cancella atomicamente (batch delete):
+   - Righe Results
+   - Riga Tournaments
+   - Righe Matches (se presenti)
+5. Importa nuovi dati
+6. Ricalcola Players (automatico, già implementato)
+
+**Garanzie di sicurezza:**
+- Cancellazione atomica (all-or-nothing) via Google Sheets API batchUpdate
+- Se cancellazione fallisce, nessun dato viene toccato
+- Players ricalcolati da zero leggendo tutti i Results
+
+### Check Specifici per TCG
+
+**Pokemon TDF:**
+- File XML valido
+- Tag obbligatori: `<name>`, `<id>`, `<startdate>`, `<players>`, `<standings>`
+- Formato data: MM/DD/YYYY
+- Ogni player ha userid, firstname, lastname
+- Match outcomes validi (1, 2, 3, 5)
+
+**One Piece CSV:**
+- CSV parsabile
+- Colonne: Ranking, User Name, Membership Number, Win Points, Record
+- Ranking numerico e sequenziale
+- Membership non vuoto
+
+**Riftbound CSV (22 colonne):**
+- Tutti i file esistono
+- Almeno 22 colonne per riga
+- User ID (col 4, 8) non vuoti
+- Event Record formato W-L-D
+
+### Output Esempio (Errore)
+
+```
+🚀 IMPORT TORNEO POKEMON: Challenge_2025_11_25.tdf
+📊 Stagione: PKM01
+
+🔍 VALIDAZIONE IN CORSO...
+
+   📄 Validazione file TDF...
+
+================================================================
+  ERRORI RILEVATI (2)
+================================================================
+  1. Riga 12: Tag <startdate> formato errato
+     Trovato: "24-09-2025" - Atteso: MM/DD/YYYY (es. "09/24/2025")
+
+  2. Riga 45: Player userid="5234880" senza <lastname>
+
+================================================================
+
+❌ IMPORT ANNULLATO - Correggi gli errori e riprova
+📋 Nessuna modifica effettuata al Google Sheet
+```
+
+---
+
 **Fine Technical Notes**
 
-Ultimo aggiornamento: 21 Novembre 2025
+Ultimo aggiornamento: 22 Novembre 2025

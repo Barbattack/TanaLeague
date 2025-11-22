@@ -16,6 +16,49 @@ Guida completa per importare tornei da CSV, PDF e TDF nei 3 TCG supportati.
 
 ## ⚠️ Note Importanti
 
+### Validazione Automatica Pre-Import
+
+**Tutti gli import script** eseguono validazione automatica PRIMA di scrivere qualsiasi dato:
+
+**Errori Bloccanti (import annullato):**
+- File non trovato o non leggibile
+- Formato file errato (XML/CSV corrotto)
+- Campi obbligatori mancanti
+- Season non configurata
+- Colonne insufficienti
+
+**Warning (richiedono conferma):**
+- Dati opzionali mancanti
+- Valori anomali ma accettabili
+- Season ARCHIVED
+
+**Garanzia:** Se c'è un errore, **nessun dato viene scritto** su Google Sheets.
+
+### Flag --reimport (Sovrascrittura Torneo)
+
+Se devi correggere un torneo già importato, usa `--reimport`:
+
+```bash
+# One Piece
+python import_onepiece.py --csv torneo.csv --season OP12 --reimport
+
+# Pokemon
+python import_pokemon.py --tdf torneo.tdf --season PKM01 --reimport
+
+# Riftbound
+python import_riftbound.py --csv R1.csv,R2.csv,R3.csv --season RFB01 --reimport
+```
+
+**Cosa fa --reimport:**
+1. Valida il nuovo file (come sempre)
+2. Trova dati esistenti del torneo
+3. **Chiede conferma esplicita** (devi digitare 's')
+4. Cancella atomicamente i vecchi dati
+5. Importa i nuovi dati
+6. Ricalcola automaticamente le stats Players
+
+**Sicurezza:** La cancellazione è atomica (all-or-nothing). Se fallisce, niente viene toccato.
+
 ### Gestione Season ARCHIVED
 
 Le stagioni con status **ARCHIVED** hanno comportamento speciale durante l'import:
@@ -81,6 +124,7 @@ python import_onepiece.py --csv path/to/file.csv --season OP12
 - `--csv`: Path al file CSV (obbligatorio)
 - `--season`: ID stagione (es. OP12, OP13) (obbligatorio)
 - `--test`: Test mode - verifica senza scrivere (opzionale)
+- `--reimport`: Permette reimport torneo esistente (opzionale)
 
 ### Cosa Fa
 
@@ -159,6 +203,7 @@ python import_pokemon.py --tdf path/to/tournament.tdf --season PKM-FS25
 - `--tdf`: Path al file TDF (obbligatorio)
 - `--season`: ID stagione (es. PKM-FS25, PKM-WIN25) (obbligatorio)
 - `--test`: Test mode (opzionale)
+- `--reimport`: Permette reimport torneo esistente (opzionale)
 
 ### Cosa Fa
 
@@ -288,6 +333,7 @@ python import_riftbound.py --csv RFB_2025_11_17_R1.csv,RFB_2025_11_17_R2.csv,RFB
 - `--csv`: Path al file CSV (o più file separati da virgola) (obbligatorio)
 - `--season`: ID stagione (es. RFB01, RFB-WIN25) (obbligatorio)
 - `--test`: Test mode (opzionale)
+- `--reimport`: Permette reimport torneo esistente (opzionale)
 
 ### Cosa Fa
 
@@ -397,9 +443,9 @@ python import_riftbound.py --csv R1.csv,R2.csv,R3.csv --season RFB01 --test
 **Causa**: CSV non ha formato atteso o colonne mancanti
 
 **Soluzione**:
-1. Verifica che il CSV abbia tutte le colonne richieste (almeno 18)
-2. Controlla che User ID (Col 5 e 9) siano presenti
-3. Verifica che Event Record (Col 17 e 18) esistano
+1. Verifica che il CSV abbia tutte le colonne richieste (**almeno 22 colonne**)
+2. Controlla che User ID (Col 4 e 8) siano presenti
+3. Verifica che Event Record (Col 16 e 17) esistano
 4. Prova a esportare nuovamente il CSV dal software
 
 ### Errore: "ValueError: Date format not recognized"
@@ -416,10 +462,16 @@ Rinomina il file in uno di questi formati:
 
 **Causa**: Tournament ID già esiste nel foglio Tournaments
 
-**Opzioni**:
-1. Rispondi `y` per sovrascrivere (sostituisce dati)
-2. Rispondi `n` per annullare
-3. Cambia data nel filename se è un torneo diverso
+**Soluzione**: Usa il flag `--reimport` per sovrascrivere:
+```bash
+python import_onepiece.py --csv torneo.csv --season OP12 --reimport
+```
+
+Il sistema:
+1. Ti chiederà conferma esplicita
+2. Cancellerà atomicamente i vecchi dati
+3. Importerà i nuovi dati
+4. Ricalcolerà le stats Players automaticamente
 
 ### Errore: "gspread.exceptions.APIError: RESOURCE_EXHAUSTED"
 

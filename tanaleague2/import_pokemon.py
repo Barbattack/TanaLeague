@@ -68,6 +68,14 @@ from datetime import datetime
 import sys
 import argparse
 from achievements import check_and_unlock_achievements
+from import_validator import (
+    ImportValidator,
+    validate_pokemon_tdf,
+    validate_google_sheets,
+    validate_season,
+    check_tournament_exists,
+    batch_delete_tournament
+)
 
 # CONFIG
 SHEET_ID = "19ZF35DTmgZG8v1GfzKE5JmMUTXLo300vuw_AdrgQPFE"  # MODIFICA!
@@ -652,11 +660,102 @@ if __name__ == "__main__":
     parser.add_argument('--tdf', required=True, help='Path to .tdf file')
     parser.add_argument('--season', required=True, help='Season ID (es: PKM-FS25)')
     parser.add_argument('--test', action='store_true', help='Test mode (no write)')
+    parser.add_argument('--reimport', action='store_true',
+                        help='Permette reimport torneo esistente (cancella e reimporta)')
 
     args = parser.parse_args()
 
-    print(f"🔍 Parsing TDF: {args.tdf}")
-    print(f"📅 Season: {args.season}\n")
+    print(f"🚀 IMPORT TORNEO POKEMON: {args.tdf}")
+    print(f"📊 Stagione: {args.season}")
+    print("")
+    print("🔍 VALIDAZIONE IN CORSO...")
+    print("")
 
+    # =========================================
+    # FASE 1: VALIDAZIONE PRE-IMPORT
+    # =========================================
+    validator = ImportValidator()
+
+    # 1.1 Valida file TDF
+    print("   📄 Validazione file TDF...")
+    validated_data = validate_pokemon_tdf(args.tdf, args.season, validator)
+
+    if validated_data:
+        print(f"   ✅ File TDF valido ({validated_data['participants_count']} partecipanti)")
+
+    # 1.2 Valida Google Sheets (solo se file OK)
+    if validator.is_valid():
+        print("   🌐 Validazione Google Sheets...")
+        required_worksheets = ['Results', 'Tournaments', 'Players', 'Config',
+                               'Seasonal_Standings_PROV', 'Pokemon_Matches']
+        sheet = validate_google_sheets(SHEET_ID, CREDENTIALS_FILE, required_worksheets, validator)
+
+        if sheet:
+            print("   ✅ Google Sheets accessibile")
+
+            # 1.3 Valida Season
+            print("   📋 Validazione Season...")
+            season_config = validate_season(sheet, args.season, validator)
+
+            if season_config:
+                print(f"   ✅ Season {args.season} trovata (TCG: {season_config.get('tcg')})")
+
+    # =========================================
+    # FASE 2: GESTIONE ERRORI/WARNING
+    # =========================================
+    if not validator.is_valid():
+        print(validator.report())
+        print("\n❌ IMPORT ANNULLATO - Correggi gli errori e riprova")
+        print("📋 Nessuna modifica effettuata al Google Sheet")
+        sys.exit(1)
+
+    if validator.has_warnings():
+        print(validator.report())
+        if not validator.ask_confirmation():
+            print("\n⚠️ IMPORT ANNULLATO dall'utente")
+            sys.exit(0)
+
+    # =========================================
+    # FASE 3: CHECK DUPLICATI
+    # =========================================
+    # Costruisci tournament_id
     data = parse_tdf(args.tdf, args.season)
+    tournament_id = data['tournament'][0]
+
+    print(f"\n   🔎 Check torneo esistente: {tournament_id}...")
+    existing = check_tournament_exists(sheet, tournament_id)
+
+    if existing['exists']:
+        if not args.reimport:
+            print(f"\n❌ Torneo {tournament_id} già importato!")
+            print(f"   Trovati: {existing['results_count']} risultati")
+            if existing['matches_count']:
+                print(f"   Trovati: {existing['matches_count']} matches")
+            print(f"\n   Per reimportare usa: --reimport")
+            sys.exit(1)
+
+        print(f"\n⚠️  REIMPORT: Torneo {tournament_id} verrà sovrascritto")
+        print(f"   Verranno cancellati: {existing['results_count']} risultati")
+        if existing['matches_count']:
+            print(f"   Verranno cancellati: {existing['matches_count']} matches")
+
+        confirm = input("   Confermi il REIMPORT? [s/N]: ").strip().lower()
+        if confirm != 's':
+            print("\n⚠️ REIMPORT ANNULLATO dall'utente")
+            sys.exit(0)
+
+        # Cancella dati esistenti
+        print("\n🗑️  Cancellazione dati esistenti...")
+        success, msg, counts = batch_delete_tournament(sheet, tournament_id, existing)
+        if not success:
+            print(f"\n❌ Errore cancellazione: {msg}")
+            sys.exit(1)
+        print(f"   ✅ {msg}")
+    else:
+        print("   ✅ Nessun duplicato trovato")
+
+    # =========================================
+    # FASE 4: IMPORT
+    # =========================================
+    print("\n📥 Import dati...")
     import_to_sheet(data, test_mode=args.test)

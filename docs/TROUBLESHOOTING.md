@@ -139,6 +139,36 @@ gspread.exceptions.APIError: {
 
 ## 📥 Errori Import Tornei
 
+### Errori di Validazione (Nuovo Sistema)
+
+Il nuovo sistema di validazione pre-import mostra errori dettagliati con riga esatta.
+
+#### "File non trovato: {path}"
+**Causa**: Path errato o file non esiste
+**Soluzione**: Verifica il percorso del file con `ls path/to/file`
+
+#### "XML non valido (file corrotto o formato errato)"
+**Causa**: File TDF Pokemon corrotto
+**Soluzione**: Verifica che il TDF sia esportato correttamente da Play! Pokémon
+
+#### "Tag <startdate> formato errato"
+**Causa**: Data nel TDF non è in formato MM/DD/YYYY
+**Soluzione**: Il formato atteso è americano (es. "09/24/2025" per 24 settembre)
+
+#### "Colonne insufficienti (trovate X, attese 22)"
+**Causa**: CSV Riftbound con formato diverso
+**Soluzione**: Verifica che il CSV abbia tutte le 22 colonne richieste
+
+#### "Event Record non valido"
+**Causa**: Formato W-L-D non riconosciuto (es. "2-1" invece di "2-1-0")
+**Soluzione**: Il formato atteso è "W-L-D" con tutti e 3 i valori (es. "3-1-0")
+
+#### "Season '{season_id}' non trovata nel foglio Config"
+**Causa**: La stagione non è stata configurata nel Google Sheet
+**Soluzione**: Aggiungi la season al foglio Config prima di importare
+
+---
+
 ### `ValueError: Date format not recognized in filename`
 
 **Messaggio**:
@@ -268,26 +298,35 @@ Se export da Limitlesstcg è diverso, modifica header manualmente o aggiorna scr
 
 ---
 
-### `Torneo già importato - Sovrascrivere? (y/n)`
+### `Torneo già importato` / `Tournament already exists`
 
 **Messaggio**:
 ```
-⚠️  ATTENZIONE: Torneo OP12_2025-06-12 già esistente!
-Sovrascrivere dati esistenti? (y/n):
+❌ Torneo OP12_2025-06-12 già importato!
+   Trovati: 32 risultati
+
+   Per reimportare usa: --reimport
 ```
 
 **Causa**: Tournament ID già presente in foglio `Tournaments`
 
-**Opzioni**:
+**Soluzione**: Usa il flag `--reimport`:
+```bash
+python import_onepiece.py --csv 2025_06_12_OP12.csv --season OP12 --reimport
+```
 
-1. **Rispondi `y`**: Sovrascrive dati esistenti (backup automatico creato)
-2. **Rispondi `n`**: Annulla import
-3. **Cambia data** nel filename se è torneo diverso:
-   ```bash
-   mv 2025_06_12_OP12.csv 2025_06_13_OP12.csv
-   ```
+Il sistema:
+1. Ti chiederà conferma esplicita (digita 's')
+2. Cancellerà atomicamente i vecchi dati (Results, Tournaments, Matches)
+3. Importerà i nuovi dati
+4. Ricalcolerà le stats Players automaticamente
 
-**Verifica backup**: Dopo sovrascrittura, check foglio `Backup_Log` per restore se necessario
+**Sicurezza**: La cancellazione è atomica. Se fallisce, niente viene toccato.
+
+**Se è un torneo diverso** con stessa data, cambia la data nel filename:
+```bash
+mv 2025_06_12_OP12.csv 2025_06_13_OP12.csv
+```
 
 ---
 

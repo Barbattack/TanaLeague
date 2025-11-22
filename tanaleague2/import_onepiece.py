@@ -68,11 +68,21 @@ import gspread
 from google.oauth2.service_account import Credentials
 import json
 import math
+import sys
 from datetime import datetime
 import re
 from typing import Dict, List, Tuple
 import argparse
 from achievements import check_and_unlock_achievements
+from import_validator import (
+    ImportValidator,
+    validate_onepiece_csv,
+    validate_google_sheets,
+    validate_season,
+    check_tournament_exists,
+    batch_delete_tournament,
+    extract_date_from_filename
+)
 
 
 # ============================================
@@ -1044,34 +1054,119 @@ def main():
     parser.add_argument('--csv', required=True, help='Path to tournament CSV file')
     parser.add_argument('--season', required=True, help='Season ID (e.g. OP12)')
     parser.add_argument('--test', action='store_true', help='Test mode (no write to sheet)')
+    parser.add_argument('--reimport', action='store_true',
+                        help='Permette reimport torneo esistente (cancella e reimporta)')
 
     args = parser.parse_args()
+
+    print(f"🚀 IMPORT TORNEO ONE PIECE: {args.csv}")
+    print(f"📊 Stagione: {args.season}")
+    print("")
+    print("🔍 VALIDAZIONE IN CORSO...")
+    print("")
+
+    # =========================================
+    # FASE 1: VALIDAZIONE PRE-IMPORT
+    # =========================================
+    validator = ImportValidator()
+
+    # 1.1 Valida file CSV
+    print("   📄 Validazione file CSV...")
+    validated_data = validate_onepiece_csv(args.csv, args.season, validator)
+
+    if validated_data:
+        print(f"   ✅ File CSV valido ({validated_data['participants_count']} partecipanti)")
+
+    # 1.2 Valida Google Sheets (solo se file OK)
+    sheet = None
+    if validator.is_valid():
+        print("   🌐 Validazione Google Sheets...")
+        required_worksheets = ['Results', 'Tournaments', 'Players', 'Config',
+                               'Seasonal_Standings_PROV', 'Vouchers']
+        sheet = validate_google_sheets(SHEET_ID, CREDENTIALS_FILE, required_worksheets, validator)
+
+        if sheet:
+            print("   ✅ Google Sheets accessibile")
+
+            # 1.3 Valida Season
+            print("   📋 Validazione Season...")
+            season_config = validate_season(sheet, args.season, validator)
+
+            if season_config:
+                print(f"   ✅ Season {args.season} trovata (TCG: {season_config.get('tcg')})")
+
+    # =========================================
+    # FASE 2: GESTIONE ERRORI/WARNING
+    # =========================================
+    if not validator.is_valid():
+        print(validator.report())
+        print("\n❌ IMPORT ANNULLATO - Correggi gli errori e riprova")
+        print("📋 Nessuna modifica effettuata al Google Sheet")
+        sys.exit(1)
+
+    if validator.has_warnings():
+        print(validator.report())
+        if not validator.ask_confirmation():
+            print("\n⚠️ IMPORT ANNULLATO dall'utente")
+            sys.exit(0)
+
+    # =========================================
+    # FASE 3: CHECK DUPLICATI
+    # =========================================
+    # Estrai data dal filename
+    tournament_date = extract_date_from_filename(args.csv)
+    if not tournament_date:
+        tournament_date = datetime.now().strftime('%Y-%m-%d')
+        print(f"   ⚠️ Data non trovata nel filename, uso: {tournament_date}")
+
+    tournament_id = f"{args.season}_{tournament_date}"
+
+    print(f"\n   🔎 Check torneo esistente: {tournament_id}...")
+    existing = check_tournament_exists(sheet, tournament_id)
+
+    if existing['exists']:
+        if not args.reimport:
+            print(f"\n❌ Torneo {tournament_id} già importato!")
+            print(f"   Trovati: {existing['results_count']} risultati")
+            print(f"\n   Per reimportare usa: --reimport")
+            sys.exit(1)
+
+        print(f"\n⚠️  REIMPORT: Torneo {tournament_id} verrà sovrascritto")
+        print(f"   Verranno cancellati: {existing['results_count']} risultati")
+
+        confirm = input("   Confermi il REIMPORT? [s/N]: ").strip().lower()
+        if confirm != 's':
+            print("\n⚠️ REIMPORT ANNULLATO dall'utente")
+            sys.exit(0)
+
+        # Cancella dati esistenti
+        print("\n🗑️  Cancellazione dati esistenti...")
+        success, msg, counts = batch_delete_tournament(sheet, tournament_id, existing)
+        if not success:
+            print(f"\n❌ Errore cancellazione: {msg}")
+            sys.exit(1)
+        print(f"   ✅ {msg}")
+    else:
+        print("   ✅ Nessun duplicato trovato")
+
+    # =========================================
+    # FASE 4: IMPORT
+    # =========================================
+    print("\n📥 Import dati...")
 
     if args.test:
         print("🧪 TEST MODE - Nessuna scrittura su Google Sheets\n")
 
-    # Connetti al foglio
-    print("🔗 Connessione a Google Sheets...")
-    try:
-        sheet = connect_to_sheet()
-        print(f"✅ Connesso a: {sheet.title}\n")
-    except Exception as e:
-        print(f"❌ Errore connessione: {e}")
-        print("\n💡 CONTROLLA:")
-        print("   1. SHEET_ID è corretto")
-        print("   2. CREDENTIALS_FILE esiste")
-        print("   3. Service Account ha accesso al foglio")
-        return
-
-    # Import torneo
+    # Import torneo (usa la connessione già validata)
     try:
         df_result = import_tournament_to_sheet(sheet, args.csv, args.season)
-        print("\n🎉 TUTTO OK!")
+        print("\n🎉 IMPORT COMPLETATO!")
 
     except Exception as e:
         print(f"\n❌ ERRORE: {e}")
         import traceback
         traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
