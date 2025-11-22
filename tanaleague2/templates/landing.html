@@ -155,140 +155,170 @@
   </div>
 </div>
 
-<!-- STATS LIVE -->
-{% if stats %}
-<div class="row g-3 mb-5">
-  <div class="col-md-4">
-    <div class="card bg-light text-center">
-      <div class="card-body">
-        <div class="fs-1 mb-2">👥</div>
-        <div class="fs-3 fw-bold text-primary">{{ stats.pulse.kpi.unique_players }}</div>
-        <div class="text-muted">Giocatori Attivi</div>
-        <small class="text-muted">Stagione Attuale</small>
-      </div>
+<!-- BREAKING NEWS TICKER -->
+<div class="mb-5">
+  <div class="ticker-container bg-dark text-white py-2 rounded overflow-hidden position-relative">
+    <div class="ticker-live-badge">
+      <span class="badge bg-danger me-2 pulse-animation">● LIVE</span>
     </div>
-  </div>
-  
-  <div class="col-md-4">
-    <div class="card bg-light text-center">
-      <div class="card-body">
-        <div class="fs-1 mb-2">🏆</div>
-        <div class="fs-3 fw-bold text-success">{{ stats.pulse.kpi.events_total }}</div>
-        <div class="text-muted">Tornei Totali</div>
-        <small class="text-muted">Stagione Attuale</small>
-      </div>
-    </div>
-  </div>
-  
-  <div class="col-md-4">
-    <div class="card bg-light text-center">
-      <div class="card-body">
-        <div class="fs-1 mb-2">🔥</div>
-        <div class="fs-4 fw-bold text-danger">{% if next_tournament %}{{ next_tournament }}{% else %}TBD{% endif %}</div>
-        <div class="text-muted">Prossimo Torneo</div>
-      </div>
+    <div class="ticker-content">
+      <span class="ticker-text">
+        {% if stats and stats.pulse and stats.pulse.kpi %}
+        🎮 {{ stats.pulse.kpi.unique_players }} giocatori in competizione
+        &nbsp;•&nbsp;
+        🏆 {{ stats.pulse.kpi.events_total }} tornei disputati questa stagione
+        &nbsp;•&nbsp;
+        {% endif %}
+        ⚔️ 3 TCG attivi: One Piece, Pokémon, Riftbound
+        &nbsp;•&nbsp;
+        🔥 Le classifiche si aggiornano dopo ogni torneo!
+        &nbsp;•&nbsp;
+        👀 Chi sarà il prossimo campione?
+        &nbsp;•&nbsp;
+      </span>
+      <span class="ticker-text" aria-hidden="true">
+        {% if stats and stats.pulse and stats.pulse.kpi %}
+        🎮 {{ stats.pulse.kpi.unique_players }} giocatori in competizione
+        &nbsp;•&nbsp;
+        🏆 {{ stats.pulse.kpi.events_total }} tornei disputati questa stagione
+        &nbsp;•&nbsp;
+        {% endif %}
+        ⚔️ 3 TCG attivi: One Piece, Pokémon, Riftbound
+        &nbsp;•&nbsp;
+        🔥 Le classifiche si aggiornano dopo ogni torneo!
+        &nbsp;•&nbsp;
+        👀 Chi sarà il prossimo campione?
+        &nbsp;•&nbsp;
+      </span>
     </div>
   </div>
 </div>
-{% endif %}
 
-<!-- TOP 3 PREVIEW -->
+<!-- DOMANDE PROVOCATORIE -->
 <div class="mb-5">
-  <h2 class="text-center mb-1">🏆 Podio One Piece</h2>
-  <p class="text-center text-muted mb-4">{{ podio_season_name }}</p>
-  
-  {% if standings and standings|length >= 3 %}
-  <div class="row g-3 justify-content-center">
-    <!-- 2° posto -->
-    <div class="col-md-3 order-md-1">
-      <div class="card h-100 border-secondary">
-        <div class="card-body text-center">
-          <div class="fs-1 mb-2">🥈</div>
-          <h5 class="fw-bold">{{ standings[1].name }}</h5>
-          <p class="text-muted mb-0">{{ standings[1].points }} punti</p>
-        </div>
-      </div>
-    </div>
-    
-    <!-- 1° posto -->
-    <div class="col-md-4 order-md-0">
-      <div class="card h-100 border-warning bg-light">
-        <div class="card-body text-center">
-          <div class="fs-1 mb-2">🥇</div>
-          <h4 class="fw-bold text-warning">{{ standings[0].name }}</h4>
-          <p class="fs-5 text-muted mb-0">{{ standings[0].points }} punti</p>
-          <span class="badge bg-warning text-dark mt-2">Campione!</span>
-        </div>
-      </div>
-    </div>
-    
-    <!-- 3° posto -->
-    <div class="col-md-3 order-md-2">
-      <div class="card h-100 border-danger">
-        <div class="card-body text-center">
-          <div class="fs-1 mb-2">🥉</div>
-          <h5 class="fw-bold">{{ standings[2].name }}</h5>
-          <p class="text-muted mb-0">{{ standings[2].points }} punti</p>
-        </div>
-      </div>
-    </div>
+  <h2 class="text-center h5 text-muted mb-4">Ti stai chiedendo...</h2>
+  <div class="row g-3 justify-content-center" id="questions-container">
+    <!-- Le domande vengono caricate via JS per essere random -->
   </div>
-  {% else %}
-  <p class="text-center text-muted">Nessun dato disponibile</p>
+</div>
+
+<style>
+/* Ticker Animation */
+.ticker-container {
+  white-space: nowrap;
+  padding-left: 80px;
+}
+
+.ticker-live-badge {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  background: #212529;
+  padding-right: 10px;
+}
+
+.ticker-content {
+  display: inline-block;
+  animation: ticker-scroll 30s linear infinite;
+}
+
+.ticker-text {
+  display: inline-block;
+  padding-right: 50px;
+}
+
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Pulse animation for LIVE badge */
+.pulse-animation {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Question cards hover effect */
+.question-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.question-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+</style>
+
+<script>
+// Domande provocatorie con link
+const allQuestions = [
+  { emoji: "🏆", text: "Chi domina la classifica?", link: "{{ url_for('classifiche_page') }}", color: "warning" },
+  { emoji: "🔥", text: "Chi ha la striscia vincente più lunga?", link: "{{ url_for('stats', scope=stats_season_id) }}", color: "danger" },
+  { emoji: "⚡", text: "Quanti tornei servono per il podio?", link: "{{ url_for('classifiche_page') }}", color: "warning" },
+  { emoji: "🎯", text: "Sei già in classifica?", link: "{{ url_for('players_list') }}", color: "primary" },
+  { emoji: "👀", text: "C'è un nuovo campione?", link: "{{ url_for('classifiche_page') }}", color: "info" },
+  { emoji: "📊", text: "Qual è il torneo più partecipato?", link: "{{ url_for('stats', scope=stats_season_id) }}", color: "success" },
+  { emoji: "🌟", text: "Chi ha più vittorie totali?", link: "{{ url_for('stats', scope=stats_season_id) }}", color: "warning" },
+  { emoji: "🎮", text: "Quale TCG ha più giocatori?", link: "{{ url_for('classifiche_page') }}", color: "info" },
+  { emoji: "🥇", text: "Chi è il re di One Piece?", link: "{{ url_for('classifica', season_id=stats_season_id) }}", color: "danger" },
+  {% if pkm_active_season_id %}
+  { emoji: "⚡", text: "Chi comanda su Pokémon?", link: "{{ url_for('classifica', season_id=pkm_active_season_id) }}", color: "warning" },
   {% endif %}
-  
-  <div class="text-center mt-3">
-    <a href="{{ url_for('classifica', season_id='OP12') }}" class="btn btn-primary">
-      Vedi classifica completa →
-    </a>
-  </div>
-</div>
+  {% if rfb_active_season_id %}
+  { emoji: "🌌", text: "Chi domina Riftbound?", link: "{{ url_for('classifica', season_id=rfb_active_season_id) }}", color: "info" },
+  {% endif %}
+  { emoji: "🤔", text: "Quanto sei forte davvero?", link: "{{ url_for('players_list') }}", color: "secondary" }
+];
 
+// Seleziona 3 domande random
+function getRandomQuestions(n) {
+  const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, n);
+}
 
-<!-- HIGHLIGHTS -->
-{% if stats and stats.spot_narrative %}
-<div class="mb-5">
-  <h2 class="text-center mb-1">✨ In Evidenza - One Piece</h2>
-  <p class="text-center text-muted mb-4">{{ stats_season_name }}</p>
-  
-  <div class="row g-3">
-    {% for card in stats.spot_narrative[:3] %}
+// Renderizza le domande
+function renderQuestions() {
+  const container = document.getElementById('questions-container');
+  const questions = getRandomQuestions(3);
+
+  container.innerHTML = questions.map(q => `
     <div class="col-md-4">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="d-flex align-items-center mb-2">
-            <span class="fs-3 me-2">{{ card.icon }}</span>
-            <h5 class="mb-0">{{ card.title }}</h5>
+      <a href="${q.link}" class="text-decoration-none">
+        <div class="card h-100 border-${q.color} question-card">
+          <div class="card-body text-center py-4">
+            <div class="fs-1 mb-2">${q.emoji}</div>
+            <h5 class="card-title text-${q.color}">${q.text}</h5>
+            <p class="text-muted small mb-0">Scopri →</p>
           </div>
-          <p class="mb-1">{{ card.text }}</p>
-          {% if card.proof %}<small class="text-muted">{{ card.proof }}</small>{% endif %}
         </div>
-      </div>
+      </a>
     </div>
-    {% endfor %}
-  </div>
-  
-  <div class="text-center mt-3">
-    <a href="{{ url_for('stats', scope=stats_season_id) }}" class="btn btn-outline-primary">
-      Scopri tutte le statistiche →
-    </a>
-  </div>
-</div>
-{% endif %}
+  `).join('');
+}
+
+// Inizializza al caricamento pagina
+document.addEventListener('DOMContentLoaded', renderQuestions);
+</script>
 
 <!-- CTA FINALE -->
 <div class="text-center py-5 bg-light rounded">
-  <h3 class="mb-3">Unisciti alla community!</h3>
-  <p class="text-muted mb-4">Partecipa ai tornei e scala le classifiche</p>
-  <a href="{{ url_for('classifica', season_id='OP12') }}" class="btn btn-primary btn-lg">
-    <i class="fas fa-trophy"></i> Vedi Classifiche
-  </a>
+  <h3 class="mb-3">Pronto a competere?</h3>
+  <p class="text-muted mb-4">Partecipa ai tornei de La Tana delle Pulci e scala le classifiche!</p>
+  <div class="d-flex justify-content-center gap-3 flex-wrap">
+    <a href="{{ url_for('classifiche_page') }}" class="btn btn-primary btn-lg">
+      📊 Vedi Classifiche
+    </a>
+    <a href="{{ url_for('players_list') }}" class="btn btn-outline-primary btn-lg">
+      🔍 Cerca Giocatore
+    </a>
+  </div>
 </div>
-
-<script>
-function goToPlayers() {
-  window.location.href = "{{ url_for('players_list') }}";
-}
-</script>
 
 {% endblock %}
